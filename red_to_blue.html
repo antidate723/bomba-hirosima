@@ -1,0 +1,597 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedro Auto Converter</title>
+<style>
+  :root {
+    --bg: #0e1015; --panel: #161a22; --panel2: #1c212c; --line: #262c3a;
+    --text: #e8eaf0; --mute: #8b93a7; --red: #ff4d5e; --blue: #3d8bff;
+    --accent: var(--blue);
+  }
+  body.rb { --accent: var(--blue); }
+  body.br { --accent: var(--red); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 50% -200px, #1d2440 0%, var(--bg) 60%);
+         color: var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; height: 100vh; overflow: hidden; }
+  .wrap { height: 100vh; display: flex; flex-direction: column; padding: 10px 12px; gap: 10px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+  .logo { width: 32px; height: 32px; border-radius: 9px;
+          background: linear-gradient(135deg, var(--red) 0 50%, var(--blue) 50% 100%);
+          box-shadow: 0 6px 24px #0008; }
+  h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+  .sub { color: var(--mute); font-size: 12px; margin-top: 1px; }
+  .spacer { flex: 1; }
+
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .seg button { background: transparent; color: var(--mute); border: 0; padding: 6px 14px; border-radius: 9px;
+                cursor: pointer; font-size: 14px; font-weight: 600; transition: .15s; }
+  .seg button.on.rb { background: linear-gradient(135deg, #b8323f, #3d6fe0); color: #fff; }
+  .seg button.on.br { background: linear-gradient(135deg, #3d6fe0, #b8323f); color: #fff; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .opts { display: flex; gap: 8px 20px; flex-wrap: wrap; align-items: center; padding: 7px 12px; margin: 0; font-size: 12.5px; color: var(--mute); }
+  .opts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .opts input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .opts input[type=number], .opts input[type=text], .opts select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 13px; }
+  .opts input[type=number] { width: 68px; }
+  .opts input[type=text] { width: 150px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 10px; flex: 1; min-height: 0; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
+  .pane { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .pane-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+            background: var(--panel2); font-size: 13px; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .pane-h .sp { flex: 1; }
+  .pane-h button { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+                   padding: 6px 11px; font-size: 12px; cursor: pointer; transition: .15s; }
+  .pane-h button:hover { border-color: var(--accent); color: #fff; }
+  .pane-h button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  textarea, .code { flex: 1; min-height: 0; margin: 0; width: 100%; background: #0b0d12; color: #d6dae6;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.55; }
+  textarea { border: 0; padding: 8px 14px; resize: none; outline: none; tab-size: 4; white-space: pre; }
+  .code { overflow: auto; padding: 8px 0; white-space: pre; }
+  .ln { display: block; padding: 0 14px 0 52px; position: relative; min-height: 1.55em; }
+  .ln::before { content: attr(data-n); position: absolute; left: 0; width: 38px; text-align: right; color: #4a5266; }
+  .ln.chg { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+  .ln.chg::before { color: var(--accent); }
+
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font-size: 12px; color: var(--mute); }
+  .chip b { color: var(--text); }
+  .warn { margin: 0; padding: 7px 12px; border-radius: 10px; font-size: 12px; line-height: 1.4;
+          background: #2a2415; border: 1px solid #5a4a1c; color: #e8d9a8; display: none; }
+  .warn code { background: #0003; padding: 1px 5px; border-radius: 4px; }
+  .foot { display: none; }
+
+  .pbtn { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
+          font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; }
+  .pbtn:hover { border-color: var(--accent); }
+  .pbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .grid.three { grid-template-columns: 1fr 1fr minmax(360px, 34vw); }
+  @media (max-width: 1100px) { .grid.three { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr 1fr; } }
+  .cv-wrap { flex: 1; min-height: 0; position: relative; background: #0b0d12; overflow: hidden; }
+  .cv-wrap canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .leg { font-weight: 500; color: var(--mute); font-size: 12px; display: inline-flex; gap: 12px; align-items: center; }
+  .leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+  .oob { color: #ffb44d; font-weight: 600; }
+  #btnPlay { background: var(--accent); border: 1px solid var(--accent); color: #fff; border-radius: 8px; padding: 6px 12px;
+             font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+  #cvStats { position: absolute; left: 10px; top: 8px; font-size: 11.5px; color: var(--mute); background: #0b0d12cc;
+             padding: 3px 8px; border-radius: 8px; pointer-events: none; }
+  #tip { position: absolute; display: none; pointer-events: none; z-index: 5; background: #1c212cf0; border: 1px solid var(--line);
+         border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.5; font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+  #tip b { font-family: system-ui, sans-serif; font-size: 12.5px; }
+</style>
+</head>
+<body class="rb">
+<div class="wrap">
+  <header>
+    <div class="logo"></div>
+    <div>
+      <h1>Pedro Auto Converter</h1>
+      <div class="sub">Rotate an auto 180° around the field center. Paste the whole file, only what has to change gets changed.</div>
+    </div>
+    <div class="spacer"></div>
+    <button class="pbtn" id="btnPrev">Field preview</button>
+    <div class="seg" id="seg">
+      <button data-d="rb" class="on rb">Red → Blue</button>
+      <button data-d="br">Blue → Red</button>
+    </div>
+  </header>
+
+  <div class="card opts">
+    <label>Field <input type="number" id="field" value="144"></label>
+    <label>Heading
+      <select id="range">
+        <option value="180">-180 … 180</option>
+        <option value="360">0 … 360</option>
+      </select>
+    </label>
+    <label>Decimals <input type="number" id="dec" value="4" min="0" max="8"></label>
+    <label><input type="checkbox" id="optAlliance" checked> Swap <code>Alliance.RED/BLUE</code></label>
+    <label><input type="checkbox" id="optCmp" checked> Flip <code>pose().x() &lt; 40</code> checks</label>
+    <label>Class name <input type="text" id="cls" placeholder="(keep as is)"></label>
+  </div>
+
+  <div class="grid">
+    <div class="card pane">
+      <div class="pane-h"><span class="dot" id="dotIn" style="background:var(--red)"></span><span id="titleIn">Red code (input)</span>
+        <span class="sp"></span>
+        <button id="clear">Clear</button>
+      </div>
+      <textarea id="in" spellcheck="false" placeholder="Paste your whole Java file here..."></textarea>
+    </div>
+    <div class="card pane">
+      <div class="pane-h"><span class="dot" id="dotOut" style="background:var(--blue)"></span><span id="titleOut">Blue code (output)</span>
+        <span class="sp"></span>
+        <button id="dl">Download .java</button>
+        <button id="copy" class="primary">Copy</button>
+      </div>
+      <div class="code" id="out"></div>
+    </div>
+    <div class="card pane" id="prev" style="display:none">
+      <div class="pane-h"><span>Field preview</span><span class="sp"></span><span class="leg" id="prevInfo"></span><button id="btnPlay">▶ Play</button></div>
+      <div class="cv-wrap" id="cvWrap"><canvas id="cv"></canvas>
+        <div id="cvStats"></div>
+        <div id="tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="warn" id="warn"></div>
+  <div class="foot">Works fully offline · single file · changed lines are highlighted</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let dir = "rb";
+let outText = "";
+
+const NUM = "-?\\d*\\.?\\d+";
+
+function fmt(n, dec) { return String(parseFloat(n.toFixed(dec))); }
+function normDeg(d, range) {
+  d = ((d % 360) + 360) % 360;
+  if (range === "180" && d > 180) d -= 360;
+  return d;
+}
+function normRad(r, range) { return normDeg(r * 180 / Math.PI, range) * Math.PI / 180; }
+
+function convert() {
+  const W = parseFloat($("field").value) || 144;
+  const dec = parseInt($("dec").value, 10) || 0;
+  const range = $("range").value;
+  const raw = $("in").value;
+  const lines = raw.split("\n");
+
+  const radiansFactory = /PoseFactory\s*\.\s*radians\s*\(\)/.test(raw);
+  const st = { poses: 0, cmps: 0, alliance: 0, cls: 0 };
+  const turretCalls = [];
+
+  const reFactory = new RegExp(`(poseFactory\\.of\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*\\))`, "g");
+  const reRadFn = new RegExp(`(new\\s+Pose\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*Math\\.toRadians\\(\\s*)(${NUM})(\\s*\\)\\s*\\))`, "g");
+  const reRad = new RegExp(`(new\\s+Pose\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*\\))`, "g");
+  const reCmp = new RegExp(`(\\.\\s*(?:x|y|getX|getY)\\s*\\(\\s*\\)\\s*)(<=|>=|<|>)(\\s*)(${NUM})`, "g");
+  const flip = { "<": ">", ">": "<", "<=": ">=", ">=": "<=" };
+
+  const out = lines.map((line, i) => {
+    let s = line;
+    const isComment = /^\s*\/\//.test(s);
+
+    // Poses
+    s = s.replace(reFactory, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      const nh = radiansFactory
+        ? fmt(normRad(parseFloat(h) + Math.PI, range), dec + 2)
+        : fmt(normDeg(parseFloat(h) + 180, range), dec);
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + nh + d;
+    });
+    s = s.replace(reRadFn, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + fmt(normDeg(parseFloat(h) + 180, range), dec) + d;
+    });
+    s = s.replace(reRad, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + fmt(normRad(parseFloat(h) + Math.PI, range), dec + 2) + d;
+    });
+
+    // Position checks like follower.pose().x() < 40
+    if ($("optCmp").checked && !isComment) {
+      s = s.replace(reCmp, (m, a, op, sp, v) => {
+        st.cmps++;
+        return a + flip[op] + sp + fmt(W - parseFloat(v), dec);
+      });
+    }
+
+    // Alliance
+    if ($("optAlliance").checked && !isComment) {
+      const from = dir === "rb" ? "RED" : "BLUE";
+      const to = dir === "rb" ? "BLUE" : "RED";
+      s = s.replace(new RegExp(`(Alliance\\s*\\.\\s*)${from}\\b`, "g"), (m, a) => { st.alliance++; return a + to; });
+    }
+
+    // Class name
+    const cn = $("cls").value.trim();
+    if (cn) {
+      s = s.replace(/(\bclass\s+)(\w+)/, (m, a, old) => { if (old !== cn) st.cls++; return a + cn; });
+    }
+
+    if (/toggleTurretHold\s*\(|setTurret\w*\s*\(|turret\w*\s*\(\s*-?\d/i.test(s) && !isComment) turretCalls.push(i + 1);
+    return s;
+  });
+
+  const changed = new Set();
+  out.forEach((l, i) => { if (l !== lines[i]) changed.add(i); });
+  return { lines: out, changed, st, turretCalls };
+}
+
+function render() {
+  const { lines, changed, st, turretCalls } = convert();
+  outText = lines.join("\n");
+  const box = $("out");
+  box.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  lines.forEach((l, i) => {
+    const d = document.createElement("span");
+    d.className = "ln" + (changed.has(i) ? " chg" : "");
+    d.dataset.n = i + 1;
+    d.textContent = l === "" ? " " : l;
+    frag.appendChild(d);
+  });
+  box.appendChild(frag);
+
+  $("stats").innerHTML = [
+    `<span class="chip"><b>${st.poses}</b> poses converted</span>`,
+    `<span class="chip"><b>${st.cmps}</b> position checks flipped</span>`,
+    `<span class="chip"><b>${st.alliance}</b> alliance swaps</span>`,
+    `<span class="chip"><b>${changed.size}</b> of ${lines.length} lines changed</span>`
+  ].join("");
+
+  const w = $("warn");
+  if (turretCalls.length) {
+    w.style.display = "block";
+    w.innerHTML = `<b>Check manually:</b> turret / angle calls on line(s) <code>${turretCalls.join(", ")}</code> were <b>not</b> changed. If those angles are field-relative (like <code>toggleTurretHold(178)</code>), they may need +180° on the other alliance. If they are robot-relative, leave them.`;
+  } else w.style.display = "none";
+  drawPreview();
+}
+
+function setDir(d) {
+  dir = d;
+  document.body.className = d;
+  document.querySelectorAll("#seg button").forEach(b => {
+    b.className = b.dataset.d === d ? "on " + d : "";
+  });
+  const a = d === "rb" ? ["Red", "Blue", "--red", "--blue"] : ["Blue", "Red", "--blue", "--red"];
+  $("titleIn").textContent = a[0] + " code (input)";
+  $("titleOut").textContent = a[1] + " code (output)";
+  $("dotIn").style.background = `var(${a[2]})`;
+  $("dotOut").style.background = `var(${a[3]})`;
+  render();
+}
+
+document.querySelectorAll("#seg button").forEach(b => b.addEventListener("click", () => setDir(b.dataset.d)));
+["field", "range", "dec", "optAlliance", "optCmp", "cls"].forEach(id => $(id).addEventListener("input", render));
+
+// Auto-detect direction when pasting a whole file
+$("in").addEventListener("input", () => {
+  const v = $("in").value;
+  if (/Alliance\s*\.\s*RED/.test(v) && !/Alliance\s*\.\s*BLUE/.test(v) && dir !== "rb") setDir("rb");
+  else if (/Alliance\s*\.\s*BLUE/.test(v) && !/Alliance\s*\.\s*RED/.test(v) && dir !== "br") setDir("br");
+  else render();
+});
+
+$("clear").addEventListener("click", () => { $("in").value = ""; render(); });
+
+$("copy").addEventListener("click", async () => {
+  const btn = $("copy");
+  try { await navigator.clipboard.writeText(outText); }
+  catch { const t = document.createElement("textarea"); t.value = outText; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1400);
+});
+
+$("dl").addEventListener("click", () => {
+  const m = outText.match(/\bclass\s+(\w+)/);
+  const name = (m ? m[1] : "Converted") + ".java";
+  const url = URL.createObjectURL(new Blob([outText], { type: "text/plain" }));
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+});
+
+// ---------- Field preview ----------
+function parsePoses(text) {
+  const rad = /PoseFactory\s*\.\s*radians\s*\(\)/.test(text);
+  const poses = {};
+  const reF = new RegExp(`(\\w+)\\s*=\\s*poseFactory\\.of\\(\\s*(${NUM})\\s*,\\s*(${NUM})\\s*,\\s*(${NUM})\\s*\\)`);
+  const reR = new RegExp(`(\\w+)\\s*=\\s*new\\s+Pose\\(\\s*(${NUM})\\s*,\\s*(${NUM})\\s*,\\s*(Math\\.toRadians\\(\\s*)?(${NUM})`);
+  text.split("\n").forEach(line => {
+    if (/^\s*\/\//.test(line)) return;
+    let m = line.match(reF);
+    if (m) { poses[m[1]] = { x: +m[2], y: +m[3], h: rad ? +m[4] * 180 / Math.PI : +m[4] }; return; }
+    m = line.match(reR);
+    if (m) poses[m[1]] = { x: +m[2], y: +m[3], h: m[4] ? +m[5] : +m[5] * 180 / Math.PI };
+  });
+  return poses;
+}
+
+function parsePaths(text, poses) {
+  const segs = [];
+  const re = /\b(line|curve)\s*\(([^()]*)\)/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const names = m[2].split(",").map(s => s.trim());
+    if (names.length >= 2 && names.every(n => poses[n])) segs.push({ kind: m[1], names });
+  }
+  return segs;
+}
+
+function bezier(pts, t) {
+  let p = pts.slice();
+  while (p.length > 1) {
+    const q = [];
+    for (let i = 0; i < p.length - 1; i++) q.push({ x: p[i].x + (p[i + 1].x - p[i].x) * t, y: p[i].y + (p[i + 1].y - p[i].y) * t });
+    p = q;
+  }
+  return p[0];
+}
+
+function drawBase() {
+  const panel = $("prev");
+  if (panel.style.display === "none") return;
+  const cv = $("cv"), box = $("cvWrap");
+  const Wf = parseFloat($("field").value) || 144;
+  const size = Math.max(220, Math.min(box.clientWidth, box.clientHeight) - 8);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = size * dpr; cv.height = size * dpr;
+  cv.style.width = size + "px"; cv.style.height = size + "px";
+  const c = cv.getContext("2d");
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const pad = 24, s = (size - 2 * pad) / Wf;
+  const X = x => pad + x * s, Y = y => size - pad - y * s;
+  const RED = "#ff4d5e", BLUE = "#3d8bff";
+  const srcCol = dir === "rb" ? RED : BLUE, outCol = dir === "rb" ? BLUE : RED;
+
+  // field
+  c.fillStyle = "#10141c"; c.fillRect(X(0), Y(Wf), Wf * s, Wf * s);
+  c.strokeStyle = "#232a38"; c.lineWidth = 1; c.fillStyle = "#4a5266"; c.font = "10px system-ui"; c.textAlign = "center";
+  const step = Wf / 6;
+  for (let i = 0; i <= 6; i++) {
+    const v = i * step;
+    c.beginPath(); c.moveTo(X(v), Y(0)); c.lineTo(X(v), Y(Wf)); c.stroke();
+    c.beginPath(); c.moveTo(X(0), Y(v)); c.lineTo(X(Wf), Y(v)); c.stroke();
+    c.fillText(Math.round(v), X(v), size - 8);
+    c.textAlign = "right"; c.fillText(Math.round(v), pad - 5, Y(v) + 3); c.textAlign = "center";
+  }
+  c.strokeStyle = "#3a4256"; c.lineWidth = 1.5; c.strokeRect(X(0), Y(Wf), Wf * s, Wf * s);
+  // center
+  c.strokeStyle = "#5a6480"; c.beginPath(); c.arc(X(Wf / 2), Y(Wf / 2), 4, 0, 7); c.stroke();
+
+  const A = parsePoses($("in").value), B = parsePoses(outText);
+  const names = Object.keys(A).filter(n => B[n]);
+  let oob = 0;
+
+  // rotation links through center
+  c.setLineDash([2, 4]); c.strokeStyle = "#ffffff22"; c.lineWidth = 1;
+  names.forEach(n => { c.beginPath(); c.moveTo(X(A[n].x), Y(A[n].y)); c.lineTo(X(B[n].x), Y(B[n].y)); c.stroke(); });
+  c.setLineDash([]);
+
+  // paths
+  const drawPaths = (P, col, src) => {
+    parsePaths(src, P).forEach(seg => {
+      const pts = seg.names.map(n => P[n]);
+      c.strokeStyle = col; c.lineWidth = 2.2; c.globalAlpha = .85; c.beginPath();
+      if (seg.kind === "line" || pts.length === 2) {
+        c.moveTo(X(pts[0].x), Y(pts[0].y)); c.lineTo(X(pts[pts.length - 1].x), Y(pts[pts.length - 1].y));
+      } else {
+        for (let i = 0; i <= 40; i++) { const p = bezier(pts, i / 40); i ? c.lineTo(X(p.x), Y(p.y)) : c.moveTo(X(p.x), Y(p.y)); }
+      }
+      c.stroke(); c.globalAlpha = 1;
+    });
+  };
+  drawPaths(A, srcCol, $("in").value);
+  drawPaths(B, outCol, outText);
+
+  // points
+  const drawPts = (P, col, label) => {
+    names.forEach(n => {
+      const p = P[n];
+      const out = p.x < 0 || p.x > Wf || p.y < 0 || p.y > Wf;
+      if (out && label === "out") oob++;
+      const px = X(p.x), py = Y(p.y);
+      c.fillStyle = col; c.beginPath(); c.arc(px, py, 4, 0, 7); c.fill();
+      if (out) { c.strokeStyle = "#ffb44d"; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 8, 0, 7); c.stroke(); }
+      const a = p.h * Math.PI / 180, L = 9, ex = px + Math.cos(a) * L * 1.4, ey = py - Math.sin(a) * L * 1.4;
+      c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath(); c.moveTo(px, py); c.lineTo(ex, ey); c.stroke();
+      c.beginPath(); c.moveTo(ex, ey);
+      c.lineTo(ex - Math.cos(a - .5) * 5, ey + Math.sin(a - .5) * 5);
+      c.lineTo(ex - Math.cos(a + .5) * 5, ey + Math.sin(a + .5) * 5); c.closePath(); c.fill();
+      c.fillStyle = "#cfd5e6"; c.font = "10px system-ui"; c.textAlign = "left";
+      c.fillText(n, px + 7, py - 7);
+    });
+  };
+  drawPts(A, srcCol, "src");
+  drawPts(B, outCol, "out");
+
+  const nm = d => d === "rb" ? "Red" : "Blue";
+  $("prevInfo").innerHTML =
+    `<span><i style="background:${srcCol}"></i>${nm(dir)} (input)</span>` +
+    `<span><i style="background:${outCol}"></i>${nm(dir === "rb" ? "br" : "rb")} (output)</span>` +
+    (oob ? `<span class="oob">⚠ ${oob} outside field</span>` : "");
+}
+
+// ---------- Preview overlay: badges, footprint, tooltip, playback ----------
+const ROBOT = 18; // inches
+let hits = [];
+let trackTotal = 0;
+const anim = { on: false, f: 0, last: 0 };
+
+function geom() {
+  const cv = $("cv");
+  const size = parseFloat(cv.style.width) || 300;
+  const Wf = parseFloat($("field").value) || 144;
+  const pad = 24, s = (size - 2 * pad) / Wf;
+  return { cv, size, Wf, s, X: x => pad + x * s, Y: y => size - pad - y * s };
+}
+function angLerp(a, b, t) { const d = ((b - a + 540) % 360) - 180; return a + d * t; }
+
+function segSamples(P, seg) {
+  const pts = seg.names.map(n => P[n]);
+  const a = pts[0], b = pts[pts.length - 1], out = [];
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const p = (seg.kind === "line" || pts.length === 2)
+      ? { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t } : bezier(pts, t);
+    out.push({ x: p.x, y: p.y, h: angLerp(a.h, b.h, t) });
+  }
+  return out;
+}
+function buildTrack(P, segs) {
+  const pts = [], cum = [0];
+  segs.forEach(seg => segSamples(P, seg).forEach(p => pts.push(p)));
+  let tot = 0;
+  for (let i = 1; i < pts.length; i++) { tot += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum.push(tot); }
+  return { pts, cum, total: tot };
+}
+function trackAt(tr, f) {
+  if (!tr.pts.length) return null;
+  const d = Math.max(0, Math.min(1, f)) * tr.total;
+  let i = 1;
+  while (i < tr.cum.length - 1 && tr.cum[i] < d) i++;
+  const span = (tr.cum[i] - tr.cum[i - 1]) || 1, t = Math.max(0, Math.min(1, (d - tr.cum[i - 1]) / span));
+  const a = tr.pts[i - 1], b = tr.pts[i];
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, h: angLerp(a.h, b.h, t) };
+}
+
+function drawRobot(c, G, p, col, alpha) {
+  const half = ROBOT * G.s / 2;
+  c.save();
+  c.translate(G.X(p.x), G.Y(p.y));
+  c.rotate(-p.h * Math.PI / 180);
+  c.fillStyle = col; c.globalAlpha = alpha; c.fillRect(-half, -half, half * 2, half * 2);
+  c.globalAlpha = 1; c.strokeStyle = col; c.lineWidth = 1.5; c.strokeRect(-half, -half, half * 2, half * 2);
+  c.lineWidth = 3.5; c.beginPath(); c.moveTo(half, -half); c.lineTo(half, half); c.stroke(); // front edge
+  c.restore();
+}
+
+function drawOverlay() {
+  const G = geom(), c = G.cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const inText = $("in").value;
+  const A = parsePoses(inText), B = parsePoses(outText);
+  const segsA = parsePaths(inText, A), segsB = parsePaths(outText, B);
+  const RED = "#ff4d5e", BLUE = "#3d8bff";
+  const srcCol = dir === "rb" ? RED : BLUE, outCol = dir === "rb" ? BLUE : RED;
+  const names = Object.keys(A).filter(n => B[n]);
+
+  hits = names.map(n => ({ n, px: G.X(B[n].x), py: G.Y(B[n].y), a: A[n], b: B[n] }));
+
+  // robot footprint at the start pose (shows real size + facing)
+  const sn = names.find(n => /start/i.test(n)) || names[0];
+  if (sn) { drawRobot(c, G, A[sn], srcCol, .15); drawRobot(c, G, B[sn], outCol, .15); }
+
+  // direction chevrons + step numbers on the output path
+  segsB.forEach((seg, i) => {
+    const sm = segSamples(B, seg);
+    [10, 30].forEach(k => {
+      const p0 = sm[k - 1], p1 = sm[k + 1], p = sm[k];
+      const a = Math.atan2(-(p1.y - p0.y), p1.x - p0.x), px = G.X(p.x), py = G.Y(p.y);
+      c.fillStyle = outCol; c.beginPath();
+      c.moveTo(px + Math.cos(a) * 6, py + Math.sin(a) * 6);
+      c.lineTo(px + Math.cos(a + 2.5) * 5, py + Math.sin(a + 2.5) * 5);
+      c.lineTo(px + Math.cos(a - 2.5) * 5, py + Math.sin(a - 2.5) * 5);
+      c.closePath(); c.fill();
+    });
+    const m = sm[20], mx = G.X(m.x), my = G.Y(m.y);
+    c.fillStyle = "#0b0d12"; c.strokeStyle = outCol; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(mx, my, 8, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = "#fff"; c.font = "bold 10px system-ui"; c.textAlign = "center"; c.fillText(i + 1, mx, my + 3.5);
+  });
+
+  // stats
+  const trk = buildTrack(B, segsB);
+  trackTotal = trk.total;
+  $("cvStats").textContent = names.length
+    ? `${names.length} poses · ${segsB.length} path segments · ${trk.total.toFixed(0)} in total · robot ${ROBOT}" square`
+    : "No poses found: paste code with poseFactory.of(...) / new Pose(...)";
+
+  // playback robots
+  if (anim.on || anim.f > 0) {
+    const pa = trackAt(buildTrack(A, segsA), anim.f), pb = trackAt(trk, anim.f);
+    if (pa) drawRobot(c, G, pa, srcCol, .45);
+    if (pb) drawRobot(c, G, pb, outCol, .45);
+  }
+}
+
+function drawPreview() {
+  if ($("prev").style.display === "none") return;
+  drawBase();
+  drawOverlay();
+}
+
+function tick(ts) {
+  if (!anim.on) return;
+  const dt = (ts - anim.last) / 1000; anim.last = ts;
+  const dur = Math.max(3, trackTotal / 45);
+  anim.f += dt / dur;
+  if (anim.f >= 1) { anim.f = 1; anim.on = false; $("btnPlay").textContent = "↻ Replay"; }
+  drawPreview();
+  if (anim.on) requestAnimationFrame(tick);
+}
+$("btnPlay").addEventListener("click", () => {
+  if (anim.on) { anim.on = false; $("btnPlay").textContent = "▶ Resume"; return; }
+  if (anim.f >= 1) anim.f = 0;
+  anim.on = true; anim.last = performance.now(); $("btnPlay").textContent = "⏸ Pause";
+  requestAnimationFrame(tick);
+});
+
+const wrap = $("cvWrap");
+wrap.addEventListener("mousemove", e => {
+  const r = $("cv").getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  let best = null, bd = 14;
+  hits.forEach(h => { const d = Math.hypot(h.px - mx, h.py - my); if (d < bd) { bd = d; best = h; } });
+  const tip = $("tip");
+  if (!best) { tip.style.display = "none"; return; }
+  const f = v => String(parseFloat(v.toFixed(2)));
+  tip.innerHTML = `<b>${best.n}</b><br>in:  ${f(best.a.x)}, ${f(best.a.y)}, ${f(best.a.h)}°<br>out: ${f(best.b.x)}, ${f(best.b.y)}, ${f(best.b.h)}°`;
+  tip.style.display = "block";
+  const wr = wrap.getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX - wr.left + 14, wr.width - 190) + "px";
+  tip.style.top = Math.min(e.clientY - wr.top + 14, wr.height - 70) + "px";
+});
+wrap.addEventListener("mouseleave", () => { $("tip").style.display = "none"; });
+
+$("btnPrev").addEventListener("click", () => {
+  const on = $("prev").style.display === "none";
+  $("prev").style.display = on ? "flex" : "none";
+  document.querySelector(".grid").classList.toggle("three", on);
+  $("btnPrev").classList.toggle("on", on);
+  requestAnimationFrame(drawPreview);
+});
+new ResizeObserver(() => drawPreview()).observe($("cvWrap"));
+window.addEventListener("resize", drawPreview);
+
+// Starter example
+$("in").value = `@Autonomous
+public class Auto3TR extends CommandOpMode {
+    private final PoseFactory poseFactory = PoseFactory.degrees();
+    private final Pose startPose = poseFactory.of(56.4, 4.3, 180);
+    private final Pose firstflower = poseFactory.of(17, 43, 180);
+    private final Pose secondLaunch = poseFactory.of(47, 118, 105);
+    private final Pose park = poseFactory.of(13.6001, 116.4655, -28.3337);
+
+    public void init() {
+        auto = new Auto(Alliance.RED, hardwareMap);
+    }
+    waitUntil(() -> follower.pose().x() < 40)
+}`;
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,1351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Pedro Auto Converter</title>
+<style>
+  :root {
+    --bg: #0e1015; --panel: #161a22; --panel2: #1c212c; --line: #262c3a;
+    --text: #e8eaf0; --mute: #8b93a7; --red: #ff4d5e; --blue: #3d8bff;
+    --accent: var(--blue);
+  }
+  body.rb { --accent: var(--blue); }
+  body.br { --accent: var(--red); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(1200px 500px at 50% -200px, #1d2440 0%, var(--bg) 60%);
+         color: var(--text); font-family: system-ui, -apple-system, Segoe UI, sans-serif; height: 100vh; overflow: hidden; }
+  .wrap { height: 100vh; display: flex; flex-direction: column; padding: 10px 12px; gap: 10px; }
+  header { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0; }
+  .logo { width: 32px; height: 32px; border-radius: 9px;
+          background: linear-gradient(135deg, var(--red) 0 50%, var(--blue) 50% 100%);
+          box-shadow: 0 6px 24px #0008; }
+  h1 { font-size: 17px; margin: 0; letter-spacing: .2px; }
+  .sub { color: var(--mute); font-size: 12px; margin-top: 1px; }
+  .spacer { flex: 1; }
+
+  .seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 4px; }
+  .seg button { background: transparent; color: var(--mute); border: 0; padding: 6px 14px; border-radius: 9px;
+                cursor: pointer; font-size: 14px; font-weight: 600; transition: .15s; }
+  .seg button.on.rb { background: linear-gradient(135deg, #b8323f, #3d6fe0); color: #fff; }
+  .seg button.on.br { background: linear-gradient(135deg, #3d6fe0, #b8323f); color: #fff; }
+
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+  .opts { display: flex; gap: 8px 20px; flex-wrap: wrap; align-items: center; padding: 7px 12px; margin: 0; font-size: 12.5px; color: var(--mute); }
+  .opts label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .opts input[type=checkbox] { accent-color: var(--accent); width: 16px; height: 16px; }
+  .opts input[type=number], .opts input[type=text], .opts select {
+    background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 6px 8px; font-size: 13px; }
+  .opts input[type=number] { width: 68px; }
+  .opts input[type=text] { width: 150px; }
+
+  .grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: minmax(0, 1fr); gap: 10px; flex: 1; min-height: 0; }
+  @media (max-width: 900px) { .grid { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; } }
+  .pane { display: flex; flex-direction: column; overflow: hidden; min-height: 0; }
+  .pane-h { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--line);
+            background: var(--panel2); font-size: 13px; font-weight: 600; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; }
+  .pane-h .sp { flex: 1; }
+  .pane-h button { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px;
+                   padding: 6px 11px; font-size: 12px; cursor: pointer; transition: .15s; }
+  .pane-h button:hover { border-color: var(--accent); color: #fff; }
+  .pane-h button.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+
+  textarea, .code { flex: 1; min-height: 0; margin: 0; width: 100%; background: #0b0d12; color: #d6dae6;
+    font-family: ui-monospace, "Cascadia Code", Consolas, monospace; font-size: 13px; line-height: 1.55; }
+  textarea { border: 0; padding: 8px 14px; resize: none; outline: none; tab-size: 4; white-space: pre; }
+  .code { overflow: auto; padding: 8px 0; white-space: pre; }
+  .ln { display: block; padding: 0 14px 0 52px; position: relative; min-height: 1.55em; }
+  .ln::before { content: attr(data-n); position: absolute; left: 0; width: 38px; text-align: right; color: #4a5266; }
+  .ln.chg { background: color-mix(in srgb, var(--accent) 18%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+  .ln.chg::before { color: var(--accent); }
+
+  .stats { display: flex; gap: 8px; flex-wrap: wrap; margin: 0; }
+  .chip { background: var(--panel); border: 1px solid var(--line); border-radius: 999px; padding: 4px 11px; font-size: 12px; color: var(--mute); }
+  .chip b { color: var(--text); }
+  .warn { margin: 0; padding: 7px 12px; border-radius: 10px; font-size: 12px; line-height: 1.4;
+          background: #2a2415; border: 1px solid #5a4a1c; color: #e8d9a8; display: none; }
+  .warn code { background: #0003; padding: 1px 5px; border-radius: 4px; }
+  .foot { display: none; }
+
+  .pbtn { background: var(--panel); color: var(--text); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px;
+          font-size: 14px; font-weight: 600; cursor: pointer; transition: .15s; }
+  .pbtn:hover { border-color: var(--accent); }
+  .pbtn.on { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .grid.three { grid-template-columns: 1fr 1fr minmax(360px, 34vw); }
+  @media (max-width: 1100px) { .grid.three { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr 1fr; } }
+  .cv-wrap { flex: 1; min-height: 0; position: relative; background: #0b0d12; overflow: hidden; }
+  .cv-wrap canvas { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); }
+  .leg { font-weight: 500; color: var(--mute); font-size: 12px; display: inline-flex; gap: 12px; align-items: center; }
+  .leg i { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 5px; }
+  .oob { color: #ffb44d; font-weight: 600; }
+  #btnPlay { background: var(--accent); border: 1px solid var(--accent); color: #fff; border-radius: 8px; padding: 6px 12px;
+             font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 6px; }
+  #cvStats { position: absolute; left: 10px; top: 8px; font-size: 11.5px; color: var(--mute); background: #0b0d12cc;
+             padding: 3px 8px; border-radius: 8px; pointer-events: none; }
+  #tip { position: absolute; display: none; pointer-events: none; z-index: 5; background: #1c212cf0; border: 1px solid var(--line);
+         border-radius: 8px; padding: 7px 10px; font-size: 12px; line-height: 1.5; font-family: ui-monospace, Consolas, monospace; white-space: nowrap; }
+  #tip b { font-family: system-ui, sans-serif; font-size: 12.5px; }
+
+  /* ---------- Run timeline ---------- */
+  .tl { flex: none; display: flex; flex-direction: column; overflow: hidden; }
+  .tl-h { display: flex; align-items: center; gap: 10px; padding: 8px 14px; cursor: pointer; font-size: 13px; user-select: none; }
+  .tl-h .car { display: inline-block; transition: .15s; color: var(--mute); }
+  .tl.open .tl-h .car { transform: rotate(90deg); }
+  .tl-now { flex: 1; min-width: 0; color: var(--mute); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .tl-now b { color: var(--accent); }
+  .tl-b { display: none; flex-direction: column; gap: 8px; padding: 8px 12px 12px; border-top: 1px solid var(--line); height: var(--tlh, min(360px, 44vh)); }
+  .tl.open .tl-b { display: flex; }
+  .tl-ctl { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--mute); flex: none; }
+  .tl-ctl input[type=range] { accent-color: var(--accent); }
+  #tlScrub { flex: 1; min-width: 80px; }
+  .tl-ctl .rd { font-family: ui-monospace, Consolas, monospace; color: var(--text); min-width: 110px; text-align: right; }
+  .tlbtn { background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 11px; font-size: 12px; cursor: pointer; }
+  #tlPlay { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  .tl-main { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 10px; flex: 1; min-height: 0; }
+  @media (max-width: 900px) { .tl-main { grid-template-columns: 1fr; overflow: auto; } }
+  .tl-left { display: flex; flex-direction: column; gap: 8px; min-height: 0; min-width: 0; }
+  .tl-warn { display: none; flex: none; max-height: 56px; overflow: auto; padding: 6px 10px; border-radius: 8px; font-size: 11.5px; line-height: 1.4;
+             background: #2a2415; border: 1px solid #5a4a1c; color: #e8d9a8; }
+  .g-wrap { flex: none; max-height: 46%; overflow: auto; background: #0b0d12; border: 1px solid var(--line); border-radius: 10px; }
+  .g-in { position: relative; }
+  .g-tick { position: absolute; top: 0; bottom: 0; border-left: 1px solid #1d2230; font-size: 10px; color: #4a5266; padding-left: 3px; pointer-events: none; }
+  .g-bar { position: absolute; height: 22px; border-radius: 6px; font-size: 11px; line-height: 22px; padding: 0 6px; color: #fff;
+           overflow: hidden; white-space: nowrap; cursor: pointer; box-shadow: inset 0 0 0 1px #fff2; }
+  #tlPH { position: absolute; top: 0; bottom: 0; width: 2px; background: #fff; box-shadow: 0 0 6px #fff8; pointer-events: none; z-index: 3; }
+  .k-follow { background: var(--accent); }
+  .k-hold { background: #b9852b; }
+  .k-wait { background: #4a5266; }
+  .k-cmd { background: #7a5fe0; }
+  .k-instant { background: #2fb37b; }
+  .tl-rows { flex: 1; min-height: 0; overflow: auto; position: relative; border: 1px solid var(--line); border-radius: 10px; background: #0b0d12; }
+  .tl-row { display: grid; grid-template-columns: 8px 96px minmax(0, 1fr) 64px; gap: 8px; align-items: center; padding: 4px 10px; font-size: 12px;
+            font-family: ui-monospace, Consolas, monospace; color: #8b93a7; cursor: pointer;
+            background: linear-gradient(90deg, color-mix(in srgb, var(--accent) 30%, transparent) var(--p, 0%), transparent var(--p, 0%)); }
+  .tl-row i { width: 8px; height: 8px; border-radius: 50%; display: block; }
+  .tl-row .du { text-align: right; }
+  .tl-row.run { color: #fff; box-shadow: inset 3px 0 0 var(--accent); }
+  .tl-row.done { opacity: .45; }
+  .tl-set { overflow: auto; background: var(--panel2); border: 1px solid var(--line); border-radius: 10px; padding: 8px 10px; font-size: 12px; color: var(--mute); }
+  .tl-set h4 { margin: 8px 0 5px; font-size: 11.5px; color: var(--text); text-transform: uppercase; letter-spacing: .5px; }
+  .tl-set h4:first-child { margin-top: 0; }
+  .tl-set textarea { flex: none; height: 58px; border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 11px; line-height: 1.4; resize: vertical; }
+  .tc-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 10px; margin-top: 6px; }
+  .tc-grid label, .tc-r { display: flex; flex-direction: column; gap: 2px; font-size: 11px; }
+  .tc-r { flex-direction: row; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 4px; }
+  .tc-r span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; font-family: ui-monospace, Consolas, monospace; }
+  .tc-r i { font-style: normal; color: #6b7390; }
+  .tl-set input[type=number] { width: 100%; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 7px; padding: 4px 6px; font-size: 12px; }
+  .tc-r input[type=number] { width: 78px; flex: none; }
+  .tl-set .hint { font-size: 11px; color: #6b7390; line-height: 1.4; }
+
+  /* ---------- Layout controls ---------- */
+  .grid { position: relative; }
+  .split { position: absolute; top: 0; bottom: 0; width: 10px; cursor: col-resize; z-index: 6; }
+  .split::after { content: ""; position: absolute; left: 4px; top: 38%; bottom: 38%; width: 2px; border-radius: 2px; background: #3a4256; transition: .15s; }
+  .split:hover::after, .split.drag::after { background: var(--accent); top: 20%; bottom: 20%; }
+  .wrap.hide-opts .opts, .wrap.hide-stats .stats, .wrap.hide-stats .warn { display: none !important; }
+  .pbtn.vc { padding: 6px 11px; font-size: 12.5px; border-radius: 9px; }
+  .vbar { display: inline-flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  #presets button.on { background: var(--accent); color: #fff; }
+  .pane-h button.x { padding: 6px 9px; color: var(--mute); }
+  .pane-h button.x:hover { color: #fff; border-color: #ff4d5e; }
+  .tl-grip { display: none; height: 9px; cursor: row-resize; flex: none; position: relative; border-top: 1px solid var(--line); }
+  .tl-grip::after { content: ""; position: absolute; left: 50%; top: 3px; width: 46px; height: 3px; margin-left: -23px; border-radius: 3px; background: #3a4256; transition: .15s; }
+  .tl-grip:hover::after { background: var(--accent); }
+  .tl.open .tl-grip { display: block; }
+  .tl-b { border-top: 0; }
+  .tlbtn.on { background: #2a3244; border-color: var(--accent); color: #fff; }
+  .tl-main.noset { grid-template-columns: minmax(0, 1fr); }
+  .tl-left.nolist .g-wrap { max-height: none; flex: 1; }
+  .wrap.nogrid .tl { flex: 1; min-height: 0; }
+  .wrap.nogrid .tl.open .tl-b { height: auto; flex: 1; min-height: 0; }
+
+  .g-grp { position: absolute; border: 1px dashed #4a5266; border-radius: 9px; background: #ffffff07; pointer-events: none; }
+  .g-grp span { position: absolute; top: 1px; left: 7px; font-size: 9.5px; color: #8b93a7; letter-spacing: .3px; white-space: nowrap; }
+  .g-lbl { position: absolute; font-size: 10.5px; color: #aab1c5; white-space: nowrap; line-height: 10px; pointer-events: none; }
+  .brl { display: inline-block; width: 14px; height: 14px; line-height: 14px; text-align: center; border-radius: 50%; background: #0006; font-size: 9.5px; margin-right: 5px; font-weight: 700; vertical-align: middle; }
+  .g-lbl .brl { background: #ffffff18; }
+  .tl-row b.br { color: var(--accent); margin-right: 6px; font-weight: 700; }
+</style>
+</head>
+<body class="rb">
+<div class="wrap">
+  <header>
+    <div class="logo"></div>
+    <div>
+      <h1>Pedro Auto Converter</h1>
+      <div class="sub">Rotate an auto 180° around the field center. Paste the whole file, only what has to change gets changed.</div>
+    </div>
+    <div class="spacer"></div>
+    <div class="seg" id="presets" title="Layout presets"><button data-p="code">Code</button><button data-p="run">Run</button><button data-p="all">All</button></div>
+    <div class="vbar" title="Show / hide boxes">
+      <button class="pbtn vc" id="vcOpts">Options</button>
+      <button class="pbtn vc" id="vcIn">Input</button>
+      <button class="pbtn vc" id="vcOut">Output</button>
+      <button class="pbtn vc" id="btnPrev">Preview</button>
+      <button class="pbtn vc" id="vcTl">Timeline</button>
+      <button class="pbtn vc" id="vcStats">Stats</button>
+    </div>
+    <div class="seg" id="seg">
+      <button data-d="rb" class="on rb">Red → Blue</button>
+      <button data-d="br">Blue → Red</button>
+    </div>
+  </header>
+
+  <div class="card opts">
+    <label>Field <input type="number" id="field" value="144"></label>
+    <label>Heading
+      <select id="range">
+        <option value="180">-180 … 180</option>
+        <option value="360">0 … 360</option>
+      </select>
+    </label>
+    <label>Decimals <input type="number" id="dec" value="4" min="0" max="8"></label>
+    <label><input type="checkbox" id="optAlliance" checked> Swap <code>Alliance.RED/BLUE</code></label>
+    <label><input type="checkbox" id="optCmp" checked> Flip <code>pose().x() &lt; 40</code> checks</label>
+    <label>Class name <input type="text" id="cls" placeholder="(keep as is)"></label>
+  </div>
+
+  <div class="grid">
+    <div class="card pane" id="pIn">
+      <div class="pane-h"><span class="dot" id="dotIn" style="background:var(--red)"></span><span id="titleIn">Red code (input)</span>
+        <span class="sp"></span>
+        <button id="clear">Clear</button>
+        <button class="x" data-hide="in" title="Hide this box">✕</button>
+      </div>
+      <textarea id="in" spellcheck="false" placeholder="Paste your whole Java file here..."></textarea>
+    </div>
+    <div class="card pane" id="pOut">
+      <div class="pane-h"><span class="dot" id="dotOut" style="background:var(--blue)"></span><span id="titleOut">Blue code (output)</span>
+        <span class="sp"></span>
+        <button id="dl">Download .java</button>
+        <button id="copy" class="primary">Copy</button>
+        <button class="x" data-hide="out" title="Hide this box">✕</button>
+      </div>
+      <div class="code" id="out"></div>
+    </div>
+    <div class="card pane" id="prev" style="display:none">
+      <div class="pane-h"><span>Field preview</span><span class="sp"></span><span class="leg" id="prevInfo"></span><button id="btnPlay">▶ Play</button><button class="x" data-hide="prev" title="Hide this box" style="margin-left:6px;background:var(--bg);color:var(--mute);border:1px solid var(--line);border-radius:8px;padding:6px 9px;font-size:12px;cursor:pointer">✕</button></div>
+      <div class="cv-wrap" id="cvWrap"><canvas id="cv"></canvas>
+        <div id="cvStats"></div>
+        <div id="tip"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="stats" id="stats"></div>
+  <div class="warn" id="warn"></div>
+
+  <div class="card tl" id="tl">
+    <div class="tl-h" id="tlH"><span class="car">▸</span><b>Run timeline</b><span class="chip" id="tlTotal">–</span><span class="tl-now" id="tlNow"></span></div>
+    <div class="tl-grip" id="tlGrip" title="Drag to resize"></div>
+    <div class="tl-b">
+      <div class="tl-ctl">
+        <button class="tlbtn" id="tlPlay">▶ Play</button>
+        <select class="tlbtn" id="tlSpeed"><option value="0.25">0.25×</option><option value="0.5">0.5×</option><option value="1" selected>1× real time</option><option value="2">2×</option></select>
+        <input type="range" id="tlScrub" min="0" max="1" step="0.01" value="0">
+        <span class="rd" id="tlRd">0.00 / 0.00 s</span>
+        <button class="tlbtn on" id="tgChart" title="Show/hide chart">Chart</button><button class="tlbtn on" id="tgList" title="Show/hide command list">List</button><button class="tlbtn on" id="tgSet" title="Show/hide constants panel">Constants</button>
+        <label>zoom <input type="range" id="tlZoom" min="1" max="6" step="0.25" value="1" style="width:80px"></label>
+      </div>
+      <div class="tl-main">
+        <div class="tl-left">
+          <div class="tl-warn" id="tlWarn"></div>
+          <div class="g-wrap" id="tlGantt"></div>
+          <div class="tl-rows" id="tlRows"></div>
+        </div>
+        <div class="tl-set">
+          <h4>Robot constants</h4>
+          <textarea id="tcPaste" spellcheck="false" placeholder="Paste your Pedro Constants.java here (xVelocity, yVelocity, forward/lateralZeroPowerAcceleration, maxPower) and the fields fill in."></textarea>
+          <div class="tc-grid">
+            <label>xVelocity (in/s)<input type="number" id="tcVx" value="65"></label>
+            <label>yVelocity (in/s)<input type="number" id="tcVy" value="50"></label>
+            <label>maxPower (0–1)<input type="number" id="tcMp" value="1" step="0.05"></label>
+            <label>Decel = |fwd ZPA|<input type="number" id="tcDec" value="35"></label>
+            <label>Accel × decel<input type="number" id="tcAcc" value="1.2" step="0.1"></label>
+            <label>Lateral |ZPA|<input type="number" id="tcLat" value="30"></label>
+            <label>Turn speed (°/s)<input type="number" id="tcAng" value="250"></label>
+            <label>Settle per path (ms)<input type="number" id="tcSet" value="150" step="25"></label>
+            <label>Global time scale<input type="number" id="tcScale" value="1" step="0.05"></label>
+          </div>
+          <h4>Command durations (ms)</h4>
+          <div id="tcCmds"></div>
+          <h4>Path times (measured s)</h4>
+          <div id="tcFollows"></div>
+          <div class="hint">waitMs / deadline / waitUntil are exact. Paths are estimated from the constants. For exact match, time a path on the real robot and type it in the "measured" box.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">Works fully offline · single file · changed lines are highlighted</div>
+</div>
+
+<script>
+const $ = id => document.getElementById(id);
+let dir = "rb";
+let outText = "";
+
+const NUM = "-?\\d*\\.?\\d+";
+
+function fmt(n, dec) { return String(parseFloat(n.toFixed(dec))); }
+function normDeg(d, range) {
+  d = ((d % 360) + 360) % 360;
+  if (range === "180" && d > 180) d -= 360;
+  return d;
+}
+function normRad(r, range) { return normDeg(r * 180 / Math.PI, range) * Math.PI / 180; }
+
+function convert() {
+  const W = parseFloat($("field").value) || 144;
+  const dec = parseInt($("dec").value, 10) || 0;
+  const range = $("range").value;
+  const raw = $("in").value;
+  const lines = raw.split("\n");
+
+  const radiansFactory = /PoseFactory\s*\.\s*radians\s*\(\)/.test(raw);
+  const st = { poses: 0, cmps: 0, alliance: 0, cls: 0 };
+  const turretCalls = [];
+
+  const reFactory = new RegExp(`(poseFactory\\.of\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*\\))`, "g");
+  const reRadFn = new RegExp(`(new\\s+Pose\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*Math\\.toRadians\\(\\s*)(${NUM})(\\s*\\)\\s*\\))`, "g");
+  const reRad = new RegExp(`(new\\s+Pose\\(\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*,\\s*)(${NUM})(\\s*\\))`, "g");
+  const reCmp = new RegExp(`(\\.\\s*(?:x|y|getX|getY)\\s*\\(\\s*\\)\\s*)(<=|>=|<|>)(\\s*)(${NUM})`, "g");
+  const flip = { "<": ">", ">": "<", "<=": ">=", ">=": "<=" };
+
+  const out = lines.map((line, i) => {
+    let s = line;
+    const isComment = /^\s*\/\//.test(s);
+
+    // Poses
+    s = s.replace(reFactory, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      const nh = radiansFactory
+        ? fmt(normRad(parseFloat(h) + Math.PI, range), dec + 2)
+        : fmt(normDeg(parseFloat(h) + 180, range), dec);
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + nh + d;
+    });
+    s = s.replace(reRadFn, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + fmt(normDeg(parseFloat(h) + 180, range), dec) + d;
+    });
+    s = s.replace(reRad, (m, a, x, b, y, c, h, d) => {
+      st.poses++;
+      return a + fmt(W - parseFloat(x), dec) + b + fmt(W - parseFloat(y), dec) + c + fmt(normRad(parseFloat(h) + Math.PI, range), dec + 2) + d;
+    });
+
+    // Position checks like follower.pose().x() < 40
+    if ($("optCmp").checked && !isComment) {
+      s = s.replace(reCmp, (m, a, op, sp, v) => {
+        st.cmps++;
+        return a + flip[op] + sp + fmt(W - parseFloat(v), dec);
+      });
+    }
+
+    // Alliance
+    if ($("optAlliance").checked && !isComment) {
+      const from = dir === "rb" ? "RED" : "BLUE";
+      const to = dir === "rb" ? "BLUE" : "RED";
+      s = s.replace(new RegExp(`(Alliance\\s*\\.\\s*)${from}\\b`, "g"), (m, a) => { st.alliance++; return a + to; });
+    }
+
+    // Class name
+    const cn = $("cls").value.trim();
+    if (cn) {
+      s = s.replace(/(\bclass\s+)(\w+)/, (m, a, old) => { if (old !== cn) st.cls++; return a + cn; });
+    }
+
+    if (/toggleTurretHold\s*\(|setTurret\w*\s*\(|turret\w*\s*\(\s*-?\d/i.test(s) && !isComment) turretCalls.push(i + 1);
+    return s;
+  });
+
+  const changed = new Set();
+  out.forEach((l, i) => { if (l !== lines[i]) changed.add(i); });
+  return { lines: out, changed, st, turretCalls };
+}
+
+function render() {
+  const { lines, changed, st, turretCalls } = convert();
+  outText = lines.join("\n");
+  const box = $("out");
+  box.innerHTML = "";
+  const frag = document.createDocumentFragment();
+  lines.forEach((l, i) => {
+    const d = document.createElement("span");
+    d.className = "ln" + (changed.has(i) ? " chg" : "");
+    d.dataset.n = i + 1;
+    d.textContent = l === "" ? " " : l;
+    frag.appendChild(d);
+  });
+  box.appendChild(frag);
+
+  $("stats").innerHTML = [
+    `<span class="chip"><b>${st.poses}</b> poses converted</span>`,
+    `<span class="chip"><b>${st.cmps}</b> position checks flipped</span>`,
+    `<span class="chip"><b>${st.alliance}</b> alliance swaps</span>`,
+    `<span class="chip"><b>${changed.size}</b> of ${lines.length} lines changed</span>`
+  ].join("");
+
+  const w = $("warn");
+  if (turretCalls.length) {
+    w.style.display = "block";
+    w.innerHTML = `<b>Check manually:</b> turret / angle calls on line(s) <code>${turretCalls.join(", ")}</code> were <b>not</b> changed. If those angles are field-relative (like <code>toggleTurretHold(178)</code>), they may need +180° on the other alliance. If they are robot-relative, leave them.`;
+  } else w.style.display = "none";
+  rebuildTL();
+  drawPreview();
+}
+
+function setDir(d) {
+  dir = d;
+  document.body.className = d;
+  document.querySelectorAll("#seg button").forEach(b => {
+    b.className = b.dataset.d === d ? "on " + d : "";
+  });
+  const a = d === "rb" ? ["Red", "Blue", "--red", "--blue"] : ["Blue", "Red", "--blue", "--red"];
+  $("titleIn").textContent = a[0] + " code (input)";
+  $("titleOut").textContent = a[1] + " code (output)";
+  $("dotIn").style.background = `var(${a[2]})`;
+  $("dotOut").style.background = `var(${a[3]})`;
+  render();
+}
+
+document.querySelectorAll("#seg button").forEach(b => b.addEventListener("click", () => setDir(b.dataset.d)));
+["field", "range", "dec", "optAlliance", "optCmp", "cls"].forEach(id => $(id).addEventListener("input", render));
+
+// Auto-detect direction when pasting a whole file
+$("in").addEventListener("input", () => {
+  const v = $("in").value;
+  if (/Alliance\s*\.\s*RED/.test(v) && !/Alliance\s*\.\s*BLUE/.test(v) && dir !== "rb") setDir("rb");
+  else if (/Alliance\s*\.\s*BLUE/.test(v) && !/Alliance\s*\.\s*RED/.test(v) && dir !== "br") setDir("br");
+  else render();
+});
+
+$("clear").addEventListener("click", () => { $("in").value = ""; render(); });
+
+$("copy").addEventListener("click", async () => {
+  const btn = $("copy");
+  try { await navigator.clipboard.writeText(outText); }
+  catch { const t = document.createElement("textarea"); t.value = outText; document.body.appendChild(t); t.select(); document.execCommand("copy"); t.remove(); }
+  btn.textContent = "Copied!"; setTimeout(() => btn.textContent = "Copy", 1400);
+});
+
+$("dl").addEventListener("click", () => {
+  const m = outText.match(/\bclass\s+(\w+)/);
+  const name = (m ? m[1] : "Converted") + ".java";
+  const url = URL.createObjectURL(new Blob([outText], { type: "text/plain" }));
+  const a = document.createElement("a"); a.href = url; a.download = name; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 500);
+});
+
+// ---------- Field preview ----------
+function parsePoses(text) {
+  const rad = /PoseFactory\s*\.\s*radians\s*\(\)/.test(text);
+  const poses = {};
+  const reF = new RegExp(`(\\w+)\\s*=\\s*poseFactory\\.of\\(\\s*(${NUM})\\s*,\\s*(${NUM})\\s*,\\s*(${NUM})\\s*\\)`);
+  const reR = new RegExp(`(\\w+)\\s*=\\s*new\\s+Pose\\(\\s*(${NUM})\\s*,\\s*(${NUM})\\s*,\\s*(Math\\.toRadians\\(\\s*)?(${NUM})`);
+  text.split("\n").forEach(line => {
+    if (/^\s*\/\//.test(line)) return;
+    let m = line.match(reF);
+    if (m) { poses[m[1]] = { x: +m[2], y: +m[3], h: rad ? +m[4] * 180 / Math.PI : +m[4] }; return; }
+    m = line.match(reR);
+    if (m) poses[m[1]] = { x: +m[2], y: +m[3], h: m[4] ? +m[5] : +m[5] * 180 / Math.PI };
+  });
+  return poses;
+}
+
+function parsePaths(text, poses) {
+  const segs = [];
+  const re = /\b(line|curve)\s*\(([^()]*)\)/g;
+  let m;
+  while ((m = re.exec(text))) {
+    const names = m[2].split(",").map(s => s.trim());
+    if (names.length >= 2 && names.every(n => poses[n])) segs.push({ kind: m[1], names });
+  }
+  return segs;
+}
+
+function bezier(pts, t) {
+  let p = pts.slice();
+  while (p.length > 1) {
+    const q = [];
+    for (let i = 0; i < p.length - 1; i++) q.push({ x: p[i].x + (p[i + 1].x - p[i].x) * t, y: p[i].y + (p[i + 1].y - p[i].y) * t });
+    p = q;
+  }
+  return p[0];
+}
+
+function drawBase() {
+  const panel = $("prev");
+  if (panel.style.display === "none") return;
+  const cv = $("cv"), box = $("cvWrap");
+  const Wf = parseFloat($("field").value) || 144;
+  const size = Math.max(220, Math.min(box.clientWidth, box.clientHeight) - 8);
+  const dpr = window.devicePixelRatio || 1;
+  cv.width = size * dpr; cv.height = size * dpr;
+  cv.style.width = size + "px"; cv.style.height = size + "px";
+  const c = cv.getContext("2d");
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const pad = 24, s = (size - 2 * pad) / Wf;
+  const X = x => pad + x * s, Y = y => size - pad - y * s;
+  const RED = "#ff4d5e", BLUE = "#3d8bff";
+  const srcCol = dir === "rb" ? RED : BLUE, outCol = dir === "rb" ? BLUE : RED;
+
+  // field
+  c.fillStyle = "#10141c"; c.fillRect(X(0), Y(Wf), Wf * s, Wf * s);
+  c.strokeStyle = "#232a38"; c.lineWidth = 1; c.fillStyle = "#4a5266"; c.font = "10px system-ui"; c.textAlign = "center";
+  const step = Wf / 6;
+  for (let i = 0; i <= 6; i++) {
+    const v = i * step;
+    c.beginPath(); c.moveTo(X(v), Y(0)); c.lineTo(X(v), Y(Wf)); c.stroke();
+    c.beginPath(); c.moveTo(X(0), Y(v)); c.lineTo(X(Wf), Y(v)); c.stroke();
+    c.fillText(Math.round(v), X(v), size - 8);
+    c.textAlign = "right"; c.fillText(Math.round(v), pad - 5, Y(v) + 3); c.textAlign = "center";
+  }
+  c.strokeStyle = "#3a4256"; c.lineWidth = 1.5; c.strokeRect(X(0), Y(Wf), Wf * s, Wf * s);
+  // center
+  c.strokeStyle = "#5a6480"; c.beginPath(); c.arc(X(Wf / 2), Y(Wf / 2), 4, 0, 7); c.stroke();
+
+  const A = parsePoses($("in").value), B = parsePoses(outText);
+  const names = Object.keys(A).filter(n => B[n]);
+  let oob = 0;
+
+  // rotation links through center
+  c.setLineDash([2, 4]); c.strokeStyle = "#ffffff22"; c.lineWidth = 1;
+  names.forEach(n => { c.beginPath(); c.moveTo(X(A[n].x), Y(A[n].y)); c.lineTo(X(B[n].x), Y(B[n].y)); c.stroke(); });
+  c.setLineDash([]);
+
+  // paths
+  const drawPaths = (P, col, src) => {
+    parsePaths(src, P).forEach(seg => {
+      const pts = seg.names.map(n => P[n]);
+      c.strokeStyle = col; c.lineWidth = 2.2; c.globalAlpha = .85; c.beginPath();
+      if (seg.kind === "line" || pts.length === 2) {
+        c.moveTo(X(pts[0].x), Y(pts[0].y)); c.lineTo(X(pts[pts.length - 1].x), Y(pts[pts.length - 1].y));
+      } else {
+        for (let i = 0; i <= 40; i++) { const p = bezier(pts, i / 40); i ? c.lineTo(X(p.x), Y(p.y)) : c.moveTo(X(p.x), Y(p.y)); }
+      }
+      c.stroke(); c.globalAlpha = 1;
+    });
+  };
+  drawPaths(A, srcCol, $("in").value);
+  drawPaths(B, outCol, outText);
+
+  // points
+  const drawPts = (P, col, label) => {
+    names.forEach(n => {
+      const p = P[n];
+      const out = p.x < 0 || p.x > Wf || p.y < 0 || p.y > Wf;
+      if (out && label === "out") oob++;
+      const px = X(p.x), py = Y(p.y);
+      c.fillStyle = col; c.beginPath(); c.arc(px, py, 4, 0, 7); c.fill();
+      if (out) { c.strokeStyle = "#ffb44d"; c.lineWidth = 2; c.beginPath(); c.arc(px, py, 8, 0, 7); c.stroke(); }
+      const a = p.h * Math.PI / 180, L = 9, ex = px + Math.cos(a) * L * 1.4, ey = py - Math.sin(a) * L * 1.4;
+      c.strokeStyle = col; c.lineWidth = 1.8; c.beginPath(); c.moveTo(px, py); c.lineTo(ex, ey); c.stroke();
+      c.beginPath(); c.moveTo(ex, ey);
+      c.lineTo(ex - Math.cos(a - .5) * 5, ey + Math.sin(a - .5) * 5);
+      c.lineTo(ex - Math.cos(a + .5) * 5, ey + Math.sin(a + .5) * 5); c.closePath(); c.fill();
+      c.fillStyle = "#cfd5e6"; c.font = "10px system-ui"; c.textAlign = "left";
+      c.fillText(n, px + 7, py - 7);
+    });
+  };
+  drawPts(A, srcCol, "src");
+  drawPts(B, outCol, "out");
+
+  const nm = d => d === "rb" ? "Red" : "Blue";
+  $("prevInfo").innerHTML =
+    `<span><i style="background:${srcCol}"></i>${nm(dir)} (input)</span>` +
+    `<span><i style="background:${outCol}"></i>${nm(dir === "rb" ? "br" : "rb")} (output)</span>` +
+    (oob ? `<span class="oob">⚠ ${oob} outside field</span>` : "");
+}
+
+// ---------- Preview overlay: badges, footprint, tooltip, playback ----------
+const ROBOT = 18; // inches
+let hits = [];
+let trackTotal = 0;
+const anim = { on: false, f: 0, t: 0, last: 0, speed: 1 };
+
+function geom() {
+  const cv = $("cv");
+  const size = parseFloat(cv.style.width) || 300;
+  const Wf = parseFloat($("field").value) || 144;
+  const pad = 24, s = (size - 2 * pad) / Wf;
+  return { cv, size, Wf, s, X: x => pad + x * s, Y: y => size - pad - y * s };
+}
+function angLerp(a, b, t) { const d = ((b - a + 540) % 360) - 180; return a + d * t; }
+
+function segSamples(P, seg) {
+  const pts = seg.names.map(n => P[n]);
+  const a = pts[0], b = pts[pts.length - 1], out = [];
+  for (let i = 0; i <= 40; i++) {
+    const t = i / 40;
+    const p = (seg.kind === "line" || pts.length === 2)
+      ? { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t } : bezier(pts, t);
+    out.push({ x: p.x, y: p.y, h: angLerp(a.h, b.h, t) });
+  }
+  return out;
+}
+function buildTrack(P, segs) {
+  const pts = [], cum = [0];
+  segs.forEach(seg => segSamples(P, seg).forEach(p => pts.push(p)));
+  let tot = 0;
+  for (let i = 1; i < pts.length; i++) { tot += Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y); cum.push(tot); }
+  return { pts, cum, total: tot };
+}
+function trackAt(tr, f) {
+  if (!tr.pts.length) return null;
+  const d = Math.max(0, Math.min(1, f)) * tr.total;
+  let i = 1;
+  while (i < tr.cum.length - 1 && tr.cum[i] < d) i++;
+  const span = (tr.cum[i] - tr.cum[i - 1]) || 1, t = Math.max(0, Math.min(1, (d - tr.cum[i - 1]) / span));
+  const a = tr.pts[i - 1], b = tr.pts[i];
+  return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t, h: angLerp(a.h, b.h, t) };
+}
+
+function drawRobot(c, G, p, col, alpha) {
+  const half = ROBOT * G.s / 2;
+  c.save();
+  c.translate(G.X(p.x), G.Y(p.y));
+  c.rotate(-p.h * Math.PI / 180);
+  c.fillStyle = col; c.globalAlpha = alpha; c.fillRect(-half, -half, half * 2, half * 2);
+  c.globalAlpha = 1; c.strokeStyle = col; c.lineWidth = 1.5; c.strokeRect(-half, -half, half * 2, half * 2);
+  c.lineWidth = 3.5; c.beginPath(); c.moveTo(half, -half); c.lineTo(half, half); c.stroke(); // front edge
+  c.restore();
+}
+
+function drawOverlay() {
+  const G = geom(), c = G.cv.getContext("2d");
+  const dpr = window.devicePixelRatio || 1;
+  c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const inText = $("in").value;
+  const A = parsePoses(inText), B = parsePoses(outText);
+  const segsA = parsePaths(inText, A), segsB = parsePaths(outText, B);
+  const RED = "#ff4d5e", BLUE = "#3d8bff";
+  const srcCol = dir === "rb" ? RED : BLUE, outCol = dir === "rb" ? BLUE : RED;
+  const names = Object.keys(A).filter(n => B[n]);
+
+  hits = names.map(n => ({ n, px: G.X(B[n].x), py: G.Y(B[n].y), a: A[n], b: B[n] }));
+
+  // robot footprint at the start pose (shows real size + facing)
+  const sn = names.find(n => /start/i.test(n)) || names[0];
+  if (sn) { drawRobot(c, G, A[sn], srcCol, .15); drawRobot(c, G, B[sn], outCol, .15); }
+
+  // direction chevrons + step numbers on the output path
+  segsB.forEach((seg, i) => {
+    const sm = segSamples(B, seg);
+    [10, 30].forEach(k => {
+      const p0 = sm[k - 1], p1 = sm[k + 1], p = sm[k];
+      const a = Math.atan2(-(p1.y - p0.y), p1.x - p0.x), px = G.X(p.x), py = G.Y(p.y);
+      c.fillStyle = outCol; c.beginPath();
+      c.moveTo(px + Math.cos(a) * 6, py + Math.sin(a) * 6);
+      c.lineTo(px + Math.cos(a + 2.5) * 5, py + Math.sin(a + 2.5) * 5);
+      c.lineTo(px + Math.cos(a - 2.5) * 5, py + Math.sin(a - 2.5) * 5);
+      c.closePath(); c.fill();
+    });
+    const m = sm[20], mx = G.X(m.x), my = G.Y(m.y);
+    c.fillStyle = "#0b0d12"; c.strokeStyle = outCol; c.lineWidth = 1.5;
+    c.beginPath(); c.arc(mx, my, 8, 0, 7); c.fill(); c.stroke();
+    c.fillStyle = "#fff"; c.font = "bold 10px system-ui"; c.textAlign = "center"; c.fillText(i + 1, mx, my + 3.5);
+  });
+
+  // stats
+  const trk = buildTrack(B, segsB);
+  trackTotal = trk.total;
+  $("cvStats").textContent = names.length
+    ? `${names.length} poses · ${segsB.length} path segments · ${trk.total.toFixed(0)} in total · robot ${ROBOT}" square`
+    : "No poses found: paste code with poseFactory.of(...) / new Pose(...)";
+
+  // playback robots (time-based when a timeline exists, otherwise by distance)
+  if (TL && !TL.err && TL.total > 0 && (anim.on || anim.t > 0 || tlOpen)) {
+    const q = TL.poseAt(anim.t);
+    if (q) {
+      drawRobot(c, G, q, srcCol, .45);
+      drawRobot(c, G, { x: G.Wf - q.x, y: G.Wf - q.y, h: q.h + 180 }, outCol, .45);
+    }
+  } else if (anim.on || anim.f > 0) {
+    const pa = trackAt(buildTrack(A, segsA), anim.f), pb = trackAt(trk, anim.f);
+    if (pa) drawRobot(c, G, pa, srcCol, .45);
+    if (pb) drawRobot(c, G, pb, outCol, .45);
+  }
+}
+
+function drawPreview() {
+  if ($("prev").style.display === "none") return;
+  drawBase();
+  drawOverlay();
+}
+
+const wrap = $("cvWrap");
+wrap.addEventListener("mousemove", e => {
+  const r = $("cv").getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  let best = null, bd = 14;
+  hits.forEach(h => { const d = Math.hypot(h.px - mx, h.py - my); if (d < bd) { bd = d; best = h; } });
+  const tip = $("tip");
+  if (!best) { tip.style.display = "none"; return; }
+  const f = v => String(parseFloat(v.toFixed(2)));
+  tip.innerHTML = `<b>${best.n}</b><br>in:  ${f(best.a.x)}, ${f(best.a.y)}, ${f(best.a.h)}°<br>out: ${f(best.b.x)}, ${f(best.b.y)}, ${f(best.b.h)}°`;
+  tip.style.display = "block";
+  const wr = wrap.getBoundingClientRect();
+  tip.style.left = Math.min(e.clientX - wr.left + 14, wr.width - 190) + "px";
+  tip.style.top = Math.min(e.clientY - wr.top + 14, wr.height - 70) + "px";
+});
+wrap.addEventListener("mouseleave", () => { $("tip").style.display = "none"; });
+
+new ResizeObserver(() => drawPreview()).observe($("cvWrap"));
+window.addEventListener("resize", drawPreview);
+
+// ---------- Run timeline: parses autoroutine() and simulates timing ----------
+const TL_KEY = "pedroTL_v1";
+const TC_IDS = ["tcVx", "tcVy", "tcMp", "tcDec", "tcAcc", "tcLat", "tcAng", "tcSet", "tcScale"];
+let TLS = { f: {}, cmd: {}, follow: {} };
+let TL = null, tlOpen = false, setupSig = null;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function saveTL() {
+  TLS.f = {}; TC_IDS.forEach(id => TLS.f[id] = $(id).value);
+  try { localStorage.setItem(TL_KEY, JSON.stringify(TLS)); } catch (e) {}
+}
+function loadTL() {
+  try {
+    const s = JSON.parse(localStorage.getItem(TL_KEY) || "null");
+    if (s) { TLS = Object.assign({ f: {}, cmd: {}, follow: {} }, s); TC_IDS.forEach(id => { if (TLS.f && TLS.f[id] !== undefined) $(id).value = TLS.f[id]; }); }
+  } catch (e) {}
+}
+function readC() {
+  const g = id => parseFloat($(id).value);
+  return {
+    vx: g("tcVx") || 60, vy: g("tcVy") || g("tcVx") || 50,
+    mp: Math.min(1, Math.max(.05, g("tcMp") || 1)),
+    dec: Math.abs(g("tcDec")) || 35, accMul: g("tcAcc") || 1.2, lat: Math.abs(g("tcLat")) || 30,
+    ang: g("tcAng") || 250, settle: isNaN(g("tcSet")) ? 150 : g("tcSet"), scale: g("tcScale") || 1
+  };
+}
+function applyConst(txt) {
+  const find = names => { for (const n of names) { const m = txt.match(new RegExp(n + "\\s*[(=]\\s*(" + NUM + ")")); if (m) return parseFloat(m[1]); } return null; };
+  const set = (id, v) => { if (v !== null && !isNaN(v)) $(id).value = v; };
+  set("tcVx", find(["xVelocity"]));
+  set("tcVy", find(["yVelocity"]));
+  set("tcMp", find(["maxPower"]));
+  const f = find(["forwardZeroPowerAcceleration"]); if (f !== null) set("tcDec", Math.abs(f));
+  const l = find(["lateralZeroPowerAcceleration"]); if (l !== null) set("tcLat", Math.abs(l));
+}
+
+// ----- tiny Java expression parser -----
+function stripComments(s) { return s.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, ""); }
+function matchClose(s, i) {
+  let d = 0, q = null;
+  for (; i < s.length; i++) {
+    const c = s[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if (c === "(" || c === "{" || c === "[") d++;
+    else if (c === ")" || c === "}" || c === "]") { d--; if (d === 0) return i; }
+  }
+  return -1;
+}
+function splitArgs(s) {
+  const out = []; let d = 0, q = null, cur = "";
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (q) { cur += c; if (c === "\\") cur += s[++i] || ""; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") { q = c; cur += c; continue; }
+    if ("({[".includes(c)) d++; else if (")}]".includes(c)) d--;
+    if (c === "," && d === 0) { out.push(cur); cur = ""; continue; }
+    cur += c;
+  }
+  if (cur.trim()) out.push(cur);
+  return out.map(x => x.trim());
+}
+function parseExpr(src) {
+  src = src.trim();
+  if (/^(\(\s*\)|\w+|\([\w\s,]*\))\s*->/.test(src)) return { raw: src };
+  const m = src.match(/^([A-Za-z_][\w$]*(?:\s*\.\s*[A-Za-z_][\w$]*)*)\s*\(/);
+  if (!m) return { raw: src };
+  const open = m[0].length - 1, close = matchClose(src, open);
+  if (close < 0) return { raw: src };
+  const node = { name: m[1].replace(/\s+/g, ""), args: splitArgs(src.slice(open + 1, close)).map(parseExpr), chain: [] };
+  let i = close + 1;
+  for (;;) {
+    const mm = src.slice(i).match(/^\s*\.\s*([A-Za-z_]\w*)\s*\(/);
+    if (!mm) break;
+    const o = i + mm[0].length - 1, c = matchClose(src, o);
+    if (c < 0) break;
+    node.chain.push({ name: mm[1], args: splitArgs(src.slice(o + 1, c)).map(parseExpr) });
+    i = c + 1;
+  }
+  node.text = src.slice(0, i).replace(/\s+/g, " ");
+  return node;
+}
+function findMethod(code, name) {
+  const re = new RegExp("\\b" + name + "\\s*\\(\\s*\\)\\s*\\{", "g"); let m;
+  while ((m = re.exec(code))) {
+    const before = code.slice(Math.max(0, m.index - 40), m.index);
+    if (!/[\w>\]]\s+$/.test(before) || /\b(new|return)\s+$/.test(before)) continue;
+    const o = m.index + m[0].length - 1, c = matchClose(code, o);
+    if (c > 0) return { body: code.slice(o + 1, c) };
+  }
+  return null;
+}
+function returnExpr(body) {
+  const m = body.match(/\breturn\b/); if (!m) return null;
+  let i = m.index + 6, d = 0, q = null; const s = i;
+  for (; i < body.length; i++) {
+    const c = body[i];
+    if (q) { if (c === "\\") i++; else if (c === q) q = null; continue; }
+    if (c === '"' || c === "'") { q = c; continue; }
+    if ("({[".includes(c)) d++; else if (")}]".includes(c)) d--; else if (c === ";" && d === 0) break;
+  }
+  return body.slice(s, i);
+}
+function findRoutine(code) {
+  const re = /\bCommand\s+(\w+)\s*\(\s*\)\s*\{/g; let m; const list = [];
+  while ((m = re.exec(code))) list.push(m[1]);
+  return list.find(n => /auto|routine|main/i.test(n)) || list[0] || null;
+}
+
+// ----- path definitions & motion model -----
+function headMode(tail, P) {
+  let m;
+  if ((m = tail.match(/\.\s*linear\s*\(\s*(\w+)\s*,\s*(\w+)/)) && P[m[1]] && P[m[2]]) return { mode: "linear", a: P[m[1]].h, b: P[m[2]].h };
+  if ((m = tail.match(/\.\s*constant\s*\(\s*([\w.\-]+)/))) {
+    const v = P[m[1]] ? P[m[1]].h : parseFloat(m[1]);
+    if (!isNaN(v)) return { mode: "constant", v };
+  }
+  if (/reverseTangent/i.test(tail)) return { mode: "rtangent" };
+  return { mode: "tangent" };
+}
+function defFromText(txt, P) {
+  const ms = [...txt.matchAll(/\b(line|curve)\s*\(([^()]*)\)/g)], segs = [];
+  ms.forEach((m, i) => {
+    const names = m[2].split(",").map(s => s.trim());
+    if (names.length < 2 || !names.every(n => P[n])) return;
+    const tail = txt.slice(m.index + m[0].length, ms[i + 1] ? ms[i + 1].index : undefined).split(";")[0];
+    const head = headMode(tail, P);
+    if (head.mode === "linear" && head.a === undefined) { head.a = P[names[0]].h; head.b = P[names[names.length - 1]].h; }
+    segs.push({ kind: m[1], names, head });
+  });
+  return segs.length ? { segs } : null;
+}
+function angDiff(a, b) { return ((((a - b + 540) % 360) + 360) % 360) - 180; }
+
+function pathMotion(P, def, pose, C, t0) {
+  const N = 40, rad = Math.PI / 180, pts = [];
+  def.segs.forEach((sg, si) => {
+    const cp = sg.names.map(n => P[n]), a = cp[0], b = cp[cp.length - 1];
+    for (let i = si ? 1 : 0; i <= N; i++) {
+      const tt = i / N;
+      const p = (sg.kind === "line" || cp.length === 2) ? { x: a.x + (b.x - a.x) * tt, y: a.y + (b.y - a.y) * tt } : bezier(cp, tt);
+      pts.push({ x: p.x, y: p.y, tt, si });
+    }
+  });
+  const n = pts.length;
+  if (n < 2) return { t0, t1: t0, s: [{ t: t0, x: pose.x, y: pose.y, h: pose.h }] };
+  pts.forEach((p, i) => {
+    const a = pts[Math.max(0, i - 1)], b = pts[Math.min(n - 1, i + 1)];
+    p.dir = Math.atan2(b.y - a.y, b.x - a.x) / rad;
+    const hd = def.segs[p.si].head;
+    p.h = hd.mode === "linear" ? angLerp(hd.a, hd.b, p.tt) : hd.mode === "constant" ? hd.v : hd.mode === "rtangent" ? p.dir + 180 : p.dir;
+  });
+  const ds = [0]; for (let i = 1; i < n; i++) ds.push(Math.hypot(pts[i].x - pts[i - 1].x, pts[i].y - pts[i - 1].y));
+  const kap = new Array(n).fill(0);
+  for (let i = 1; i < n - 1; i++) {
+    const a = pts[i - 1], b = pts[i], c = pts[i + 1];
+    const cr = (b.x - a.x) * (c.y - b.y) - (b.y - a.y) * (c.x - b.x);
+    const la = Math.hypot(b.x - a.x, b.y - a.y), lb = Math.hypot(c.x - b.x, c.y - b.y), lc = Math.hypot(c.x - a.x, c.y - a.y);
+    if (la * lb * lc > 1e-9) kap[i] = 2 * Math.abs(cr) / (la * lb * lc);
+  }
+  const vcap = pts.map((p, i) => {
+    const ph = (p.dir - p.h) * rad;
+    let v = C.mp / Math.sqrt((Math.cos(ph) / C.vx) ** 2 + (Math.sin(ph) / C.vy) ** 2);
+    if (kap[i] > 1e-6) v = Math.min(v, Math.sqrt(C.lat / kap[i]));
+    return Math.max(v, 3);
+  });
+  const acc = C.dec * C.accMul, dec = C.dec, v = vcap.slice();
+  v[0] = 0;
+  for (let i = 1; i < n; i++) v[i] = Math.min(v[i], Math.sqrt(v[i - 1] ** 2 + 2 * acc * ds[i]));
+  v[n - 1] = 0;
+  for (let i = n - 2; i >= 0; i--) v[i] = Math.min(v[i], Math.sqrt(v[i + 1] ** 2 + 2 * dec * ds[i + 1]));
+  const dt = [0], segMove = {};
+  for (let i = 1; i < n; i++) {
+    const d = (v[i - 1] + v[i]) > 1e-9 ? 2 * ds[i] / (v[i - 1] + v[i]) : 0;
+    dt.push(d); segMove[pts[i].si] = (segMove[pts[i].si] || 0) + d;
+  }
+  const lastH = {}; pts.forEach(p => lastH[p.si] = p.h);
+  const turnT = {}, fac = {};
+  def.segs.forEach((sg, si) => {
+    const hd = sg.head; let td = 0;
+    if (hd.mode === "linear") td = Math.abs(angDiff(hd.b, hd.a));
+    else if (hd.mode === "constant") td = Math.abs(angDiff(hd.v, si === 0 ? pose.h : lastH[si - 1]));
+    turnT[si] = td / C.ang;
+    fac[si] = segMove[si] > 0 ? Math.max(1, turnT[si] / segMove[si]) : 1;
+  });
+  const s = [{ t: t0, x: pts[0].x, y: pts[0].y, h: def.segs[0].head.mode === "constant" ? pose.h : pts[0].h }];
+  let t = 0; const segStart = {};
+  for (let i = 1; i < n; i++) {
+    const si = pts[i].si;
+    if (segStart[si] === undefined) segStart[si] = t;
+    t += dt[i] * fac[si] * C.scale;
+    let h = pts[i].h;
+    const hd = def.segs[si].head;
+    if (hd.mode === "constant") {
+      const from = si === 0 ? pose.h : lastH[si - 1], tt = turnT[si] * C.scale;
+      h = angLerp(from, hd.v, tt > 0 ? Math.min(1, (t - segStart[si]) / tt) : 1);
+    }
+    s.push({ t: t0 + t, x: pts[i].x, y: pts[i].y, h });
+  }
+  const last = s[s.length - 1];
+  if (C.settle > 0) s.push({ t: last.t + C.settle / 1000, x: last.x, y: last.y, h: last.h });
+  return { t0, t1: s[s.length - 1].t, s };
+}
+function stretchMotion(m, newDur) {
+  const d = m.t1 - m.t0; if (d <= 0) return m;
+  const k = newDur / d;
+  return { t0: m.t0, t1: m.t0 + newDur, s: m.s.map(p => ({ ...p, t: m.t0 + (p.t - m.t0) * k })) };
+}
+function cutMotion(m, tc) {
+  const s = [];
+  for (let i = 0; i < m.s.length; i++) {
+    if (m.s[i].t <= tc) { s.push(m.s[i]); continue; }
+    const a = m.s[i - 1], b = m.s[i];
+    if (a) { const k = (tc - a.t) / (b.t - a.t); s.push({ t: tc, x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, h: angLerp(a.h, b.h, k) }); }
+    break;
+  }
+  return { t0: m.t0, t1: tc, s };
+}
+const lastS = m => m.s[m.s.length - 1];
+function clipMotions(ms, tc) { return ms.filter(m => m.t0 < tc).map(m => m.t1 <= tc ? m : cutMotion(m, tc)); }
+function clipBars(bs, tc) {
+  return bs.filter(b => b.t0 < tc || (b.t0 === tc && b.t1 === b.t0)).map(b => ({ ...b, t1: Math.min(b.t1, tc) }));
+}
+function posAfter(ms, pose) {
+  let best = null;
+  ms.forEach(m => { if (m.t1 < Infinity && (!best || m.t1 >= best.t1)) best = m; });
+  return best ? { x: lastS(best).x, y: lastS(best).y, h: lastS(best).h } : pose;
+}
+function makePoseAt(motions, start) {
+  const M = motions.slice().sort((a, b) => a.t0 - b.t0);
+  return t => {
+    let m = null;
+    for (const x of M) { if (x.t0 <= t) m = x; else break; }
+    if (!m) return start;
+    const s = m.s;
+    if (t >= m.t1) return lastS(m);
+    let i = 1; while (i < s.length - 1 && s[i].t < t) i++;
+    const a = s[i - 1], b = s[i], k = b.t > a.t ? (t - a.t) / (b.t - a.t) : 1;
+    return { x: a.x + (b.x - a.x) * k, y: a.y + (b.y - a.y) * k, h: angLerp(a.h, b.h, k) };
+  };
+}
+
+// ----- command evaluation -----
+const defMs = k => /launch|shoot|fire/i.test(k) ? 1000 : 0;
+function leafDur(k) { const v = TLS.cmd[k]; return (v !== undefined && v !== "" && !isNaN(+v) ? +v : defMs(k)) / 1000; }
+const shortT = a => { const t = (a && (a.text || a.raw)) || ""; return t.length > 42 ? t.slice(0, 40) + "…" : t; };
+const fin = x => x.end === Infinity ? x.fin : x.end;
+function pushBar(env, b) { if (env.cur) { b.g = env.cur.g; b.br = env.cur.br; b.n = env.cur.n; } env.bars.push(b); }
+
+function ev(node, t0, pose, ctx, env) {
+  if (env.depth > 12) return { end: t0, fin: t0, motions: [], pose };
+  env.depth++;
+  try { return ev2(node, t0, pose, ctx, env); } finally { env.depth--; }
+}
+function ev2(node, t0, pose, ctx, env) {
+  const L = (kind, label, dur, key) => {
+    pushBar(env, { kind, label, t0, t1: t0 + dur, key });
+    return { end: t0 + dur, fin: t0 + dur, motions: [], pose };
+  };
+  if (node.raw !== undefined) {
+    const key = node.raw.replace(/\s+/g, ""); env.unk.set(key, node.raw);
+    return L("cmd", node.raw, leafDur(key), key);
+  }
+  const nm = node.name.replace(/^(Commands|Groups|PedroCommands|Ivy)\./, "");
+  let r;
+  switch (nm) {
+    case "sequential": case "sequence": {
+      let t = t0, p = pose; const M = [];
+      node.args.forEach(a => {
+        const x = ev(a, t, p, ctx, env);
+        if (x.end === Infinity) env.warns.add(`${shortT(a)} never ends on its own inside a sequential. Wrap it in deadline(...) or race(...). It was cut where its motion finishes.`);
+        t = fin(x); p = x.pose; M.push(...x.motions);
+      });
+      r = { end: t, fin: t, motions: M, pose: p }; break;
+    }
+    case "parallel": {
+      const sc = { ...env, bars: [], warns: new Set() }, M1 = [];
+      node.args.forEach(a => M1.push(...ev(a, t0, pose, ctx, sc).motions));
+      const ctx2 = { motions: M1.concat((ctx && ctx.motions) || []) };
+      let end = t0, f = t0; const all = [];
+      const gid = ++env.cnt.n, prevCur = env.cur;
+      node.args.forEach((a, bi) => {
+        env.cur = { g: gid, br: "ABCDEFGH"[bi] || String(bi + 1), n: node.args.length };
+        const x = ev(a, t0, pose, ctx2, env); end = Math.max(end, x.end); f = Math.max(f, x.fin, x.end === Infinity ? 0 : x.end); all.push(...x.motions);
+      });
+      env.cur = prevCur;
+      r = { end, fin: f, motions: all, pose: posAfter(all, pose) }; break;
+    }
+    case "deadline": case "race": {
+      const sc = { ...env, bars: [] };
+      const rs = node.args.map(a => ev(a, t0, pose, ctx, sc));
+      let tc;
+      if (nm === "deadline") tc = rs.length ? fin(rs[0]) : t0;
+      else { tc = Math.min(...rs.map(x => x.end)); if (tc === Infinity) tc = Math.max(...rs.map(x => x.fin)); }
+      env.bars.push(...clipBars(sc.bars, tc));
+      const M = clipMotions(rs.flatMap(x => x.motions), tc);
+      r = { end: tc, fin: tc, motions: M, pose: posAfter(M, pose) }; break;
+    }
+    case "waitMs": case "wait": {
+      const ms = parseFloat(node.args[0] && node.args[0].raw);
+      if (isNaN(ms)) { const key = node.text.replace(/\s+/g, ""); env.unk.set(key, node.text); r = L("cmd", node.text, leafDur(key), key); }
+      else r = L("wait", `wait ${ms} ms`, ms / 1000);
+      break;
+    }
+    case "waitUntil": {
+      const raw = (node.args[0] && (node.args[0].raw || node.args[0].text)) || "";
+      const m = raw.match(/\b(?:pose|getPose)\s*\(\s*\)\s*\.\s*(x|y|getX|getY)\s*\(\s*\)\s*(<=|>=|<|>)\s*(-?\d*\.?\d+)/);
+      let end = t0, label = "wait until condition";
+      if (m) {
+        const ax = /x/i.test(m[1]) ? "x" : "y", op = m[2], val = +m[3];
+        label = `wait until ${ax} ${op} ${val}`;
+        const test = p => op === "<" ? p[ax] < val : op === ">" ? p[ax] > val : op === "<=" ? p[ax] <= val : p[ax] >= val;
+        if (test(pose)) end = t0;
+        else if (ctx && ctx.motions) {
+          const all = []; ctx.motions.forEach(mo => mo.s.forEach(s => { if (s.t >= t0) all.push(s); }));
+          all.sort((a, b) => a.t - b.t);
+          const hit = all.find(test);
+          if (hit) end = hit.t; else env.warns.add(`"${label}" never becomes true along the path it runs beside.`);
+        } else env.warns.add(`"${label}" has no path running beside it, so it was counted as 0 s.`);
+      } else env.warns.add(`waitUntil condition not understood (${shortT(node.args[0])}). Counted as 0 s.`);
+      pushBar(env, { kind: "wait", label, t0, t1: end });
+      r = { end, fin: end, motions: [], pose }; break;
+    }
+    case "instant": case "runOnce": r = L("instant", "instant " + shortT(node.args[0]).replace(/^\(\s*\)\s*->\s*/, ""), 0); break;
+    case "infinite": case "loop": pushBar(env, { kind: "cmd", label: "infinite (until cancelled)", t0, t1: Infinity }); r = { end: Infinity, fin: t0, motions: [], pose }; break;
+    case "follow": {
+      const a = node.args[1]; const pn = (a && (a.name || a.raw)) || "?"; const key = "follow:" + pn;
+      let def = null;
+      if (a && a.text && /^(path|line|curve)$/.test(a.name || "")) def = defFromText(a.text, env.P);
+      else { const mm = findMethod(env.clean, pn); if (mm) def = defFromText(mm.body, env.P); }
+      let mo = def ? pathMotion(env.P, def, pose, env.C, t0) : null;
+      const est = mo ? mo.t1 - mo.t0 : 0;
+      env.follows.set(key, { label: pn, est, found: !!def });
+      let dur = est; const ov = parseFloat(TLS.follow[key]);
+      if (ov > 0) { dur = ov; if (mo) mo = stretchMotion(mo, ov); }
+      if (!def) env.warns.add(`Path ${pn}() not found (or its poses are not defined as constants). Type a measured time for it.`);
+      pushBar(env, { kind: "follow", label: "follow " + pn, t0, t1: t0 + dur, key });
+      r = { end: t0 + dur, fin: t0 + dur, motions: mo ? [mo] : [], pose: mo ? { x: lastS(mo).x, y: lastS(mo).y, h: lastS(mo).h } : pose }; break;
+    }
+    case "hold": {
+      const a = node.args[1]; const pn = (a && (a.raw || a.name)) || "?"; const tgt = env.P[pn];
+      let M = [], md = 0;
+      if (tgt) {
+        const mo = pathMotion({ _a: pose, _b: tgt }, { segs: [{ kind: "line", names: ["_a", "_b"], head: { mode: "linear", a: pose.h, b: tgt.h } }] }, pose, { ...env.C, settle: 0 }, t0);
+        M = [mo]; md = mo.t1 - mo.t0;
+      } else env.warns.add(`hold target ${pn} not found.`);
+      pushBar(env, { kind: "hold", label: "hold " + pn, t0, t1: Infinity });
+      r = { end: Infinity, fin: t0 + md, motions: M, pose: tgt || pose }; break;
+    }
+    default: {
+      if (!node.name.includes(".") && node.args.length === 0) {
+        const mm = findMethod(env.clean, node.name), ex = mm && returnExpr(mm.body);
+        if (ex) { r = ev(parseExpr(ex), t0, pose, ctx, env); break; }
+      }
+      const key = node.text.replace(/\s+/g, ""); env.unk.set(key, node.text);
+      r = L("cmd", node.text, leafDur(key), key);
+    }
+  }
+  for (const c of node.chain) {
+    if (/^(then|andThen|next)$/.test(c.name) && c.args[0]) {
+      const r2 = ev(c.args[0], fin(r), r.pose, ctx, env);
+      r = { end: r2.end, fin: r2.fin, motions: r.motions.concat(r2.motions), pose: r2.pose };
+    }
+  }
+  return r;
+}
+
+function buildTimeline(code) {
+  const C = readC(), clean = stripComments(code), P = parsePoses(code);
+  const out = { err: null, total: 0, bars: [], sorted: [], motions: [], unk: new Map(), follows: new Map(), warns: [], poseAt: () => null };
+  const rn = findRoutine(clean);
+  if (!rn) { out.err = "No method returning Command found. Expected something like: private Command autoroutine() { return sequential(...); }"; return out; }
+  const meth = findMethod(clean, rn), ex = meth && returnExpr(meth.body);
+  if (!ex) { out.err = `Could not find a return statement in ${rn}().`; return out; }
+  const sn = Object.keys(P).find(n => /start/i.test(n));
+  const start = sn ? P[sn] : (Object.values(P)[0] || { x: 0, y: 0, h: 0 });
+  const env = { cnt: { n: 0 }, cur: null, bars: [], unk: out.unk, follows: out.follows, warns: new Set(), clean, P, C, depth: 0 };
+  const r = ev(parseExpr(ex), 0, start, null, env);
+  let total = fin(r);
+  env.bars.forEach(b => { if (b.t1 !== Infinity) total = Math.max(total, b.t1); });
+  out.bars = env.bars.map(b => b.t1 === Infinity ? { ...b, t1: total, inf: true } : b);
+  out.total = total;
+  out.sorted = out.bars.map((b, i) => ({ b, i })).sort((a, c) => a.b.t0 - c.b.t0 || a.i - c.i).map(x => x.b);
+  out.motions = r.motions;
+  out.start = start;
+  out.poseAt = makePoseAt(r.motions, start);
+  out.warns = [...env.warns];
+  out.routine = rn;
+  return out;
+}
+
+// ----- UI -----
+const isActive = (b, t) => b.t1 === b.t0 ? (t >= b.t0 && t < b.t0 + .15) : (t >= b.t0 && t < b.t1);
+function rebuildTL() {
+  try { TL = buildTimeline($("in").value); }
+  catch (e) { TL = { err: "Parse error: " + e.message, total: 0, bars: [], sorted: [], motions: [], unk: new Map(), follows: new Map(), warns: [], poseAt: () => null }; }
+  if (anim.t > TL.total) anim.t = TL.total;
+  renderTL();
+}
+function renderSetup() {
+  const ck = [...TL.unk.keys()], fk = [...TL.follows.keys()], sig = ck.join("|") + "##" + fk.join("|");
+  if (sig !== setupSig) {
+    setupSig = sig;
+    $("tcCmds").innerHTML = ck.length ? ck.map(k => `<div class="tc-r"><span title="${esc(TL.unk.get(k))}">${esc(TL.unk.get(k))}</span><input type="number" min="0" step="50" data-k="${esc(k)}" value="${TLS.cmd[k] !== undefined ? esc(TLS.cmd[k]) : defMs(k)}"></div>`).join("") : '<div class="hint">none</div>';
+    $("tcFollows").innerHTML = fk.length ? fk.map(k => `<div class="tc-r"><span title="${esc(k)}">${esc(TL.follows.get(k).label)} <i data-est="${esc(k)}"></i></span><input type="number" min="0" step="0.05" placeholder="auto" data-f="${esc(k)}" value="${TLS.follow[k] !== undefined ? esc(TLS.follow[k]) : ""}"></div>`).join("") : '<div class="hint">none</div>';
+  }
+  document.querySelectorAll("[data-est]").forEach(el => {
+    const f = TL.follows.get(el.dataset.est); if (f) el.textContent = "est " + f.est.toFixed(2) + "s";
+  });
+}
+function renderTL() {
+  const T = TL;
+  $("tlTotal").innerHTML = T.err ? "no routine" : `<b>${T.total.toFixed(2)}</b> s`;
+  renderSetup();
+  const w = $("tlWarn");
+  const msgs = T.err ? [T.err] : T.warns;
+  w.style.display = msgs.length ? "block" : "none";
+  w.innerHTML = msgs.map(esc).join("<br>");
+  if (!tlOpen) { updateTLNow(); return; }
+  $("tlScrub").max = Math.max(T.total, 0.01);
+
+  const sorted = T.sorted, laneEnd = [], lane = [], Y0 = 34;
+  const Wd = $("tlGantt").clientWidth || 600, zoom = parseFloat($("tlZoom").value) || 1;
+  const pps = Math.max(24, (Wd - 60) / Math.max(T.total, .5)) * zoom; T.pps = pps;
+  const lblOf = b => { const t = b.label.replace(/^instant\s+/, ""); return t.length > 30 ? t.slice(0, 29) + "…" : t; };
+  sorted.forEach(b => {
+    const occ = b.t1 === b.t0 ? b.t0 + (lblOf(b).length * 6.3 + 28) / pps : Math.max(b.t1, b.t0 + .2);
+    let l = laneEnd.findIndex(e => e <= b.t0 + 1e-6);
+    if (l < 0) { l = laneEnd.length; laneEnd.push(0); }
+    laneEnd[l] = occ; lane.push(l);
+  });
+  const lanes = Math.max(1, laneEnd.length);
+  const step = [.25, .5, 1, 2, 5, 10, 20].find(s => s * pps >= 56) || 30;
+  const gm = {};
+  sorted.forEach((b, i) => {
+    if (!b.g) return; const o = gm[b.g];
+    if (!o) gm[b.g] = { t0: b.t0, t1: b.t1, l0: lane[i], l1: lane[i], n: b.n };
+    else { o.t0 = Math.min(o.t0, b.t0); o.t1 = Math.max(o.t1, b.t1); o.l0 = Math.min(o.l0, lane[i]); o.l1 = Math.max(o.l1, lane[i]); }
+  });
+  let h = `<div class="g-in" id="tlGI" style="width:${T.total * pps + 40}px;height:${lanes * 26 + 48}px">`;
+  for (let s = 0; s <= T.total + 1e-6; s += step) h += `<div class="g-tick" style="left:${s * pps}px">${+s.toFixed(2)}s</div>`;
+  Object.values(gm).forEach(o => {
+    if (o.n < 2) return;
+    h += `<div class="g-grp" style="left:${o.t0 * pps - 4}px;top:${Y0 + o.l0 * 26 - 15}px;width:${(o.t1 - o.t0) * pps + 8}px;height:${(o.l1 - o.l0 + 1) * 26 + 13}px"><span>∥ parallel</span></div>`;
+  });
+  sorted.forEach((b, i) => {
+    const inst = b.t1 === b.t0, left = b.t0 * pps, top = Y0 + lane[i] * 26;
+    const tip = `${b.g ? "parallel branch " + b.br + "\n" : ""}${b.label}\n${b.t0.toFixed(2)}s → ${b.inf ? "…" : b.t1.toFixed(2)}s`;
+    const brl = b.g ? `<span class="brl">${b.br}</span>` : "";
+    h += inst
+      ? `<div class="g-bar k-instant" data-t0="${b.t0}" title="${esc(tip)}" style="left:${left - 5}px;top:${top + 6}px;width:10px;height:10px;border-radius:50%;padding:0"></div><div class="g-lbl" style="left:${left + 9}px;top:${top + 6}px">${brl}${esc(lblOf(b))}</div>`
+      : `<div class="g-bar k-${b.kind}" data-t0="${b.t0}" title="${esc(tip)}" style="left:${left}px;top:${top}px;width:${Math.max(4, (b.t1 - b.t0) * pps - 1)}px">${brl}${esc(b.label)}</div>`;
+  });
+  h += `<div id="tlPH"></div></div>`;
+  $("tlGantt").innerHTML = h;
+
+  $("tlRows").innerHTML = sorted.map((b, i) => {
+    const dur = b.t1 === b.t0 ? "instant" : b.inf ? "until cut" : (b.t1 - b.t0).toFixed(2) + "s";
+    return `<div class="tl-row" data-i="${i}"><i class="k-${b.kind}"></i><span>${b.t0.toFixed(2)}→${b.inf ? "…" : b.t1.toFixed(2)}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(b.label)}">${b.g ? `<b class="br">∥${b.br}</b>` : ""}${esc(b.label)}</span><span class="du">${dur}</span></div>`;
+  }).join("") || '<div class="hint" style="padding:10px">No commands found.</div>';
+  updateTLNow();
+}
+function updateTLNow() {
+  const T = TL; if (!T) return;
+  if (T.err || !T.bars.length) { $("tlNow").textContent = ""; return; }
+  const t = Math.min(anim.t, T.total), act = T.sorted.filter(b => isActive(b, t));
+  $("tlNow").innerHTML = `t = <b>${t.toFixed(2)}s</b> · ` + (T.total > 0 && t >= T.total - 1e-6 ? "finished" : act.length ? esc(act.map(b => b.label).join("  +  ")) : "—");
+  if (!tlOpen) return;
+  $("tlRd").textContent = `${t.toFixed(2)} / ${T.total.toFixed(2)} s`;
+  $("tlScrub").value = t;
+  const ph = $("tlPH"); if (ph) ph.style.left = (t * (T.pps || 0)) + "px";
+  const rows = $("tlRows").children; let firstRun = null;
+  T.sorted.forEach((b, i) => {
+    const r = rows[i]; if (!r || !r.classList.contains("tl-row")) return;
+    const run = isActive(b, t), done = !run && t >= (b.t1 === b.t0 ? b.t0 + .15 : b.t1);
+    r.className = "tl-row" + (run ? " run" : done ? " done" : "");
+    r.style.setProperty("--p", (run && b.t1 > b.t0 ? Math.min(100, (t - b.t0) / (b.t1 - b.t0) * 100) : 0) + "%");
+    if (run && !firstRun) firstRun = r;
+  });
+  if (firstRun && anim.on) {
+    const box = $("tlRows"), top = firstRun.offsetTop;
+    if (top < box.scrollTop || top + firstRun.offsetHeight > box.scrollTop + box.clientHeight) box.scrollTop = top - box.clientHeight / 3;
+  }
+}
+function setPlayLabels(s) { $("btnPlay").textContent = s; $("tlPlay").textContent = s; }
+function togglePlay() {
+  if (anim.on) { anim.on = false; setPlayLabels("▶ Resume"); return; }
+  if (TL && TL.total > 0) {
+    if (anim.t >= TL.total - 1e-3) anim.t = 0;
+    if ($("prev").style.display === "none") $("btnPrev").click();
+  } else if (anim.f >= 1) anim.f = 0;
+  anim.on = true; anim.last = performance.now(); setPlayLabels("⏸ Pause");
+  requestAnimationFrame(tick);
+}
+function tick(ts) {
+  if (!anim.on) return;
+  const dt = (ts - anim.last) / 1000; anim.last = ts;
+  if (TL && TL.total > 0) {
+    anim.t += dt * anim.speed;
+    if (anim.t >= TL.total) { anim.t = TL.total; anim.on = false; setPlayLabels("↻ Replay"); }
+  } else {
+    const dur = Math.max(3, trackTotal / 45);
+    anim.f += dt / dur;
+    if (anim.f >= 1) { anim.f = 1; anim.on = false; setPlayLabels("↻ Replay"); }
+  }
+  drawPreview(); updateTLNow();
+  if (anim.on) requestAnimationFrame(tick);
+}
+function seek(t) { anim.t = Math.max(0, Math.min(TL ? TL.total : 0, t)); drawPreview(); updateTLNow(); }
+
+$("btnPlay").addEventListener("click", togglePlay);
+$("tlPlay").addEventListener("click", togglePlay);
+$("tlSpeed").addEventListener("change", e => { anim.speed = +e.target.value; });
+$("tlScrub").addEventListener("input", e => seek(+e.target.value));
+$("tlZoom").addEventListener("input", renderTL);
+$("tlH").addEventListener("click", () => setVis("tl"));
+$("tlGantt").addEventListener("click", e => {
+  const b = e.target.closest(".g-bar");
+  if (b) return seek(+b.dataset.t0);
+  const gi = $("tlGI"); if (gi && TL && TL.pps) seek((e.clientX - gi.getBoundingClientRect().left) / TL.pps);
+});
+$("tlRows").addEventListener("click", e => {
+  const r = e.target.closest(".tl-row"); if (r && TL) seek(TL.sorted[+r.dataset.i].t0);
+});
+TC_IDS.forEach(id => $(id).addEventListener("input", () => { saveTL(); rebuildTL(); drawPreview(); }));
+$("tcPaste").addEventListener("input", () => { applyConst($("tcPaste").value); saveTL(); rebuildTL(); drawPreview(); });
+$("tcCmds").addEventListener("input", e => {
+  const k = e.target.dataset.k; if (k === undefined) return;
+  TLS.cmd[k] = e.target.value; saveTL(); rebuildTL(); drawPreview();
+});
+$("tcFollows").addEventListener("input", e => {
+  const k = e.target.dataset.f; if (k === undefined) return;
+  TLS.follow[k] = e.target.value; saveTL(); rebuildTL(); drawPreview();
+});
+let lastGW = 0;
+new ResizeObserver(() => { const w = $("tlGantt").clientWidth; if (tlOpen && Math.abs(w - lastGW) > 2) { lastGW = w; renderTL(); } }).observe($("tlGantt"));
+loadTL();
+
+
+// ---------- View / layout: show-hide boxes, presets, draggable splitters ----------
+const VKEY = "pedroView_v1";
+let V = { opts: true, in: true, out: true, prev: false, stats: true, tl: false };
+let W = { in: 1, out: 1, prev: 1 }, TV = { chart: true, list: true, set: true }, TLH = 0;
+const PANES = [["in", "pIn"], ["out", "pOut"], ["prev", "prev"]];
+const PRESETS = {
+  code: { opts: 1, in: 1, out: 1, prev: 0, stats: 1, tl: 0 },
+  run:  { opts: 0, in: 0, out: 0, prev: 1, stats: 0, tl: 1 },
+  all:  { opts: 1, in: 1, out: 1, prev: 1, stats: 1, tl: 1 }
+};
+const wrapEl = () => document.querySelector(".wrap"), gridEl = () => document.querySelector(".grid");
+function saveView() { try { localStorage.setItem(VKEY, JSON.stringify({ V, W, TV, TLH })); } catch (e) {} }
+function loadView() {
+  try {
+    const s = JSON.parse(localStorage.getItem(VKEY) || "null");
+    if (s) { Object.assign(V, s.V); Object.assign(W, s.W); Object.assign(TV, s.TV); TLH = s.TLH || 0; }
+  } catch (e) {}
+}
+function visPanes() { return PANES.filter(([k]) => V[k]); }
+function cols(vis) { return vis.map(([k]) => `minmax(0, ${W[k]}fr)`).join(" "); }
+function placeSplits() {
+  const vis = visPanes();
+  gridEl().querySelectorAll(".split").forEach(h => { h.style.left = ($(vis[+h.dataset.i][1]).offsetLeft - 10) + "px"; });
+}
+function layout() {
+  const g = gridEl(), vis = visPanes(), narrow = window.innerWidth < 900;
+  PANES.forEach(([k, id]) => { $(id).style.display = V[k] ? "flex" : "none"; });
+  g.style.display = vis.length ? "grid" : "none";
+  wrapEl().classList.toggle("nogrid", !vis.length);
+  g.style.gridTemplateColumns = narrow ? "minmax(0, 1fr)" : cols(vis);
+  g.style.gridTemplateRows = narrow ? `repeat(${vis.length}, minmax(0, 1fr))` : "minmax(0, 1fr)";
+  g.querySelectorAll(".split").forEach(e => e.remove());
+  if (!narrow) vis.forEach((p, i) => { if (!i) return; const h = document.createElement("div"); h.className = "split"; h.dataset.i = i; g.appendChild(h); });
+  placeSplits();
+  requestAnimationFrame(() => { placeSplits(); drawPreview(); });
+}
+function applyView() {
+  const w = wrapEl();
+  w.classList.toggle("hide-opts", !V.opts);
+  w.classList.toggle("hide-stats", !V.stats);
+  tlOpen = !!V.tl; $("tl").classList.toggle("open", tlOpen);
+  if (TLH) $("tl").style.setProperty("--tlh", TLH + "px");
+  const map = { opts: "vcOpts", in: "vcIn", out: "vcOut", prev: "btnPrev", stats: "vcStats", tl: "vcTl" };
+  Object.entries(map).forEach(([k, id]) => $(id).classList.toggle("on", !!V[k]));
+  [["chart", "tgChart"], ["list", "tgList"], ["set", "tgSet"]].forEach(([k, id]) => $(id).classList.toggle("on", !!TV[k]));
+  $("tlGantt").style.display = TV.chart ? "" : "none";
+  $("tlRows").style.display = TV.list ? "" : "none";
+  document.querySelector(".tl-set").style.display = TV.set ? "" : "none";
+  document.querySelector(".tl-main").classList.toggle("noset", !TV.set);
+  document.querySelector(".tl-left").classList.toggle("nolist", !TV.list);
+  layout();
+  if (TL) { if (tlOpen) renderTL(); else updateTLNow(); }
+}
+function setVis(k, v) {
+  V[k] = v === undefined ? !V[k] : v;
+  if (k === "prev" && V.prev) W.prev = Math.max(.6, W.prev || 1);
+  document.querySelectorAll("#presets button").forEach(b => b.classList.remove("on"));
+  saveView(); applyView();
+}
+[["vcOpts", "opts"], ["vcIn", "in"], ["vcOut", "out"], ["btnPrev", "prev"], ["vcTl", "tl"], ["vcStats", "stats"]]
+  .forEach(([id, k]) => $(id).addEventListener("click", () => setVis(k)));
+[["tgChart", "chart"], ["tgList", "list"], ["tgSet", "set"]]
+  .forEach(([id, k]) => $(id).addEventListener("click", () => { TV[k] = !TV[k]; saveView(); applyView(); }));
+document.querySelectorAll("#presets button").forEach(b => b.addEventListener("click", () => {
+  Object.keys(PRESETS[b.dataset.p]).forEach(k => V[k] = !!PRESETS[b.dataset.p][k]);
+  saveView(); applyView();
+  document.querySelectorAll("#presets button").forEach(x => x.classList.toggle("on", x === b));
+}));
+document.addEventListener("click", e => { const b = e.target.closest("[data-hide]"); if (b) setVis(b.dataset.hide, false); });
+window.addEventListener("resize", layout);
+
+// drag to resize columns
+gridEl().addEventListener("mousedown", e => {
+  const h = e.target.closest(".split"); if (!h) return;
+  e.preventDefault();
+  const vis = visPanes(), i = +h.dataset.i, px = vis.map(([k, id]) => $(id).offsetWidth), x0 = e.clientX;
+  h.classList.add("drag");
+  const mv = ev => {
+    const d = Math.max(-(px[i - 1] - 170), Math.min(px[i] - 170, ev.clientX - x0));
+    const n = px.slice(); n[i - 1] += d; n[i] -= d;
+    const avg = n.reduce((a, b) => a + b, 0) / n.length;
+    vis.forEach(([k], j) => { W[k] = +(n[j] / avg).toFixed(4); });
+    gridEl().style.gridTemplateColumns = cols(vis); placeSplits();
+  };
+  const up = () => { removeEventListener("mousemove", mv); removeEventListener("mouseup", up); h.classList.remove("drag"); saveView(); drawPreview(); };
+  addEventListener("mousemove", mv); addEventListener("mouseup", up);
+});
+// drag to resize timeline height
+$("tlGrip").addEventListener("mousedown", e => {
+  e.preventDefault();
+  const y0 = e.clientY, h0 = document.querySelector(".tl-b").offsetHeight;
+  const mv = ev => { TLH = Math.round(Math.max(150, Math.min(window.innerHeight - 170, h0 + (y0 - ev.clientY)))); $("tl").style.setProperty("--tlh", TLH + "px"); };
+  const up = () => { removeEventListener("mousemove", mv); removeEventListener("mouseup", up); saveView(); drawPreview(); };
+  addEventListener("mousemove", mv); addEventListener("mouseup", up);
+});
+loadView(); applyView();
+
+// Starter example
+$("in").value = `@Autonomous
+public class Auto3TR extends CommandOpMode {
+    private final PoseFactory poseFactory = PoseFactory.degrees();
+    private final Pose startPose = poseFactory.of(56.4, 4.3, 180);
+    private final Pose firstflower = poseFactory.of(17, 43, 180);
+    private final Pose secondLaunch = poseFactory.of(47, 118, 105);
+    private final Pose park = poseFactory.of(13.6001, 116.4655, -28.3337);
+
+    public void init() {
+        auto = new Auto(Alliance.RED, hardwareMap);
+    }
+    waitUntil(() -> follower.pose().x() < 40)
+}`;
+render();
+</script>
+</body>
+</html>
