@@ -118,6 +118,7 @@
     <div class="row">
       <label>Tooltip decimals<input type="number" id="decT" data-s min="0" max="8" placeholder="auto"></label>
       <label>Line width<input type="number" id="lw" data-s min="1" max="8" value="2"></label>
+      <label>Top/bottom space (%)<input type="number" id="ypad" data-s min="0" max="40" value="8"></label>
     </div>
     <label class="chk"><input type="checkbox" id="smooth" data-s> Smooth line</label>
     <label class="chk"><input type="checkbox" id="pts" data-s checked> Show points</label>
@@ -234,7 +235,7 @@ function getO() {
     c1: $("c1").value, c2: $("c2").value, k1: $("k1").checked, k2: $("k2").checked,
     spacing: $("spacing").value, sort: $("sort").checked, smooth: $("smooth").checked, pts: $("pts").checked,
     grid: $("grid").checked, atitles: $("atitles").checked, allcols: $("allcols").checked,
-    title: $("title").value.trim(), lw: Math.max(1, +$("lw").value || 2)
+    ypad: Math.max(0, Math.min(40, isNaN(parseFloat($("ypad").value)) ? 8 : parseFloat($("ypad").value))), title: $("title").value.trim(), lw: Math.max(1, +$("lw").value || 2)
   };
 }
 function sortedRows(o) { const r = data.slice(); if (o.sort) r.sort((a, b) => a[o.x] - b[o.x]); return r; }
@@ -261,7 +262,7 @@ function draw(hover = -1) {
   const series = [{ col: o.y1, color: o.c1, side: "L", dec: o.dec1, k: o.k1, min: o.min1, max: o.max1 }];
   if (o.y2 >= 0 && o.y2 < names.length) series.push({ col: o.y2, color: o.c2, side: "R", dec: o.dec2, k: o.k2, min: o.min2, max: o.max2 });
   const hasR = series.length > 1;
-  const ml = o.atitles ? 74 : 58, mr = hasR ? (o.atitles ? 78 : 62) : 22, mt = o.title ? 46 : 20, mb = o.atitles ? 58 : 38;
+  const ml = o.atitles ? 74 : 58, mr = hasR ? (o.atitles ? 78 : 62) : 22, mt = o.title ? 50 : 26, mb = o.atitles ? 62 : 44;
   const pw = W - ml - mr, ph = H - mt - mb;
   if (pw < 50 || ph < 50) return;
 
@@ -271,7 +272,9 @@ function draw(hover = -1) {
     if (!isNaN(cmn)) mn = cmn; if (!isNaN(cmx)) mx = cmx;
     if (mx <= mn) mx = mn + 1;
     const nt = niceTicks(mn, mx, 5);
-    s.lo = !isNaN(cmn) ? cmn : nt.lo; s.hi = !isNaN(cmx) ? cmx : nt.hi; s.step = nt.step;
+    // auto range gets breathing room above and below (custom min/max are used exactly as typed)
+    const base = nt.hi - nt.lo, yp = o.ypad / 100 * base;
+    s.lo = !isNaN(cmn) ? cmn : nt.lo - yp; s.hi = !isNaN(cmx) ? cmx : nt.hi + yp; s.step = nt.step;
     s.ticks = nt.ticks.filter(t => t >= s.lo - 1e-9 && t <= s.hi + 1e-9);
     s.py = v => mt + ph - (v - s.lo) / ((s.hi - s.lo) || 1) * ph;
   });
@@ -318,7 +321,7 @@ function draw(hover = -1) {
   // crosshair
   if (hover >= 0) { c.strokeStyle = "#4a5266"; c.lineWidth = 1; c.beginPath(); c.moveTo(px(hover), mt); c.lineTo(px(hover), mt + ph); c.stroke(); }
   // series
-  c.save(); c.beginPath(); c.rect(ml - 8, mt - 8, pw + 16, ph + 16); c.clip();
+  c.save(); c.beginPath(); c.rect(ml - 8, mt - 14, pw + 16, ph + 28); c.clip();
   series.forEach(s => {
     const p = rows.map((r, i) => ({ x: px(i), y: s.py(r[s.col]) }));
     c.strokeStyle = s.color; c.lineWidth = o.lw; c.lineJoin = "round"; curve(c, p, o.smooth);
