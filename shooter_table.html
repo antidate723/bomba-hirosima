@@ -48,6 +48,26 @@
   th { position: sticky; top: 0; background: var(--panel2); color: var(--mute); font-weight: 600; }
   tr.hov td { background: #1b2a47; color: #fff; }
   .msg { color: #e8d9a8; font-size: 12px; margin-top: 6px; }
+
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; margin-left: 10px; }
+  .seg button { border: 0; border-radius: 0; background: transparent; color: var(--mute); padding: 7px 14px; }
+  .seg button.on { background: var(--accent); color: #fff; }
+  body.look .donly { display: none !important; }
+  section.right { overflow: auto; }
+  #lookCard { display: none; flex: none; padding: 10px 14px; }
+  #lookCard .top { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  #lookCard .top .sp { flex: 1; }
+  #lookCard .tab { padding: 4px 11px; font-size: 12px; }
+  #lookCard .tab.on { background: #2a3244; border-color: var(--accent); color: #fff; }
+  #metrics { margin-top: 8px; display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 8px 18px; font-size: 12.5px; }
+  #metrics .mc { background: var(--panel2); border: 1px solid var(--line); border-radius: 9px; padding: 8px 11px; line-height: 1.55; }
+  #metrics .mc b { color: #fff; }
+  #metrics .mc .n { color: #cfe0ff; font-weight: 600; }
+  #metrics .mc .d { color: var(--mute); }
+  #metrics .note { grid-column: 1 / -1; color: var(--mute); font-size: 12px; }
+  #tip div.zone { display: block; color: #9aa1b5; font-size: 11.5px; margin: -2px 0 5px; }
+  tr.edge td { color: #6b7390; }
+  td.pos { color: #ffb4b4; } td.neg { color: #a9c8ff; }
 </style>
 </head>
 <body>
@@ -56,6 +76,7 @@
     <h1>Shooter table → chart</h1>
     <div class="sub">Paste your <code>add(distance, rpm, hood)</code> lines and plot any column against any other.</div>
   </div>
+  <div class="seg" id="modeSeg"><button data-m="data" class="on">Measured data</button><button data-m="look">Lookup preview</button></div>
   <div class="sp"></div>
   <a class="btn" href="javascript:history.back()">← Back to converter</a>
 </header>
@@ -81,6 +102,31 @@
   <div class="hint">Commented lines are ignored. A first comment line like <code>// distance (in), rpm, hood</code> names the columns. Plain CSV rows work too.</div>
   <div class="msg" id="msg"></div>
 
+  <div id="lookCtl" style="display:none">
+    <h3>Lookup preview (what your robot would use)</h3>
+    <div class="row">
+      <label>Interpolation<select id="lkMethod" data-s>
+        <option value="linear">Linear</option>
+        <option value="cubic">Cubic spline (natural)</option>
+        <option value="pchip" selected>Monotone cubic (PCHIP)</option>
+        <option value="catmull">Catmull-Rom</option>
+        <option value="nearest">Nearest point</option>
+        <option value="poly">Polynomial fit (formula)</option>
+      </select></label>
+      <label>Polynomial degree<input type="number" id="lkDeg" data-s min="1" max="8" value="3"></label>
+      <label>From<input type="number" id="lkFrom" data-s step="any" value="20"></label>
+      <label>To<input type="number" id="lkTo" data-s step="any" value="80"></label>
+      <label>Step<input type="number" id="lkStep" data-s step="any" min="0.01" value="1"></label>
+      <label>Outside the data<select id="lkExt" data-s><option value="clamp">Hold edge value</option><option value="slope">Continue edge slope</option></select></label>
+    </div>
+    <div class="stack" style="margin-top:8px">
+      <label class="chk"><input type="checkbox" id="lkSteps" data-s checked> Dot at every step</label>
+      <label class="chk"><input type="checkbox" id="lkMeas" data-s checked> Ring around measured points</label>
+      <label class="chk"><input type="checkbox" id="lkShade" data-s checked> Shade the range with no data</label>
+    </div>
+    <div class="hint">Pick the same method your robot code uses. The X variable below is the lookup input (distance).</div>
+  </div>
+
   <h3>Column names</h3>
   <div class="stack" id="names"></div>
 
@@ -88,8 +134,8 @@
   <div class="row">
     <label>Variable<select id="selX"></select></label>
     <label>Decimals (blank = auto)<input type="number" id="decX" data-s min="0" max="8" placeholder="auto"></label>
-    <label>Spacing<select id="spacing" data-s><option value="even">Evenly spaced</option><option value="scale">True scale</option></select></label>
-    <label class="chk" style="padding-top:16px"><input type="checkbox" id="sort" data-s checked> Sort by X</label>
+    <label class="donly">Spacing<select id="spacing" data-s><option value="even">Evenly spaced</option><option value="scale">True scale</option></select></label>
+    <label class="chk donly" style="padding-top:16px"><input type="checkbox" id="sort" data-s checked> Sort by X</label>
   </div>
 
   <h3>Y axis (left)</h3>
@@ -120,8 +166,8 @@
       <label>Line width<input type="number" id="lw" data-s min="1" max="8" value="2"></label>
       <label>Top/bottom space (%)<input type="number" id="ypad" data-s min="0" max="40" value="8"></label>
     </div>
-    <label class="chk"><input type="checkbox" id="smooth" data-s> Smooth line</label>
-    <label class="chk"><input type="checkbox" id="pts" data-s checked> Show points</label>
+    <label class="chk donly"><input type="checkbox" id="smooth" data-s> Smooth line</label>
+    <label class="chk donly"><input type="checkbox" id="pts" data-s checked> Show points</label>
     <label class="chk"><input type="checkbox" id="grid" data-s checked> Grid lines</label>
     <label class="chk"><input type="checkbox" id="atitles" data-s checked> Axis titles</label>
     <label class="chk"><input type="checkbox" id="allcols" data-s checked> Tooltip shows every column</label>
@@ -131,12 +177,18 @@
   <div class="row">
     <button id="png" class="primary">Download PNG</button>
     <button id="copy">Copy sorted code</button>
+    <button id="copyLook" style="display:none">Copy lookup (every step)</button>
   </div>
   <div style="margin-top:10px"><button id="reset">Reset everything</button></div>
 </aside>
 
 <section class="right">
   <div id="cvWrap"><canvas id="cv"></canvas><div id="tip"></div></div>
+  <div class="card" id="lookCard">
+    <div class="top"><b>Lookup accuracy</b><span class="hint" id="lkSub"></span><div class="sp"></div>
+      <button class="tab on" id="tabAcc">Accuracy at measured points</button><button class="tab" id="tabSteps">Every step</button></div>
+    <div id="metrics"></div>
+  </div>
   <div class="card tblwrap"><table id="tbl"></table></div>
 </section>
 </main>
@@ -145,7 +197,7 @@
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const BG = "#000000", KEY = "shooterTable_v1";
-let data = [], names = [], sig = "", LAY = null, hoverI = -1;
+let data = [], names = [], sig = "", LAY = null, hoverI = -1, MODE = "data", LOOKTAB = "acc", LKEY = "", lookInit = false;
 
 /* ---------------- parsing ---------------- */
 function parse(text) {
@@ -250,6 +302,7 @@ function curve(c, p, smooth) {
 }
 function draw(hover = -1) {
   hoverI = hover;
+  if (MODE === "look") return drawLookup(hover);
   const wrap = $("cvWrap"), cv = $("cv"), W = wrap.clientWidth, H = wrap.clientHeight, dpr = window.devicePixelRatio || 1;
   cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
   const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -351,6 +404,12 @@ function showTip(i, mx, my) {
 $("cvWrap").addEventListener("mousemove", e => {
   if (!LAY) return;
   const r = $("cvWrap").getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  if (LAY.look) {
+    if (mx < LAY.ml - 6 || mx > LAY.ml + LAY.pw + 6) { if (hoverI >= 0) draw(-1); showTip(-1); return; }
+    const k = Math.max(0, Math.min(LAY.steps.length - 1, Math.round(((mx - LAY.ml) / LAY.pw * (LAY.to - LAY.from)) / LAY.step)));
+    if (k !== hoverI) draw(k);
+    showTipLook(k, mx, my); return;
+  }
   if (mx < LAY.ml - 12 || mx > LAY.ml + LAY.pw + 12) { if (hoverI >= 0) draw(-1); showTip(-1); return; }
   let best = 0, bd = 1e9; LAY.xs.forEach((x, i) => { const d = Math.abs(x - mx); if (d < bd) { bd = d; best = i; } });
   if (best !== hoverI) draw(best);
@@ -378,10 +437,288 @@ $("copy").addEventListener("click", () => {
   function fallback() { const t = document.createElement("textarea"); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (e) {} t.remove(); }
 });
 
+
+/* ---------------- lookup preview ---------------- */
+function prepData(xc) {
+  const m = new Map();
+  data.forEach(r => { let e = m.get(r[xc]); if (!e) { e = { n: 0, s: new Array(r.length).fill(0) }; m.set(r[xc], e); } e.n++; r.forEach((v, j) => e.s[j] += v); });
+  const X = [...m.keys()].sort((a, b) => a - b), cols = [];
+  for (let j = 0; j < names.length; j++) cols[j] = X.map(x => m.get(x).s[j] / m.get(x).n);
+  return { X, cols };
+}
+function getLook() {
+  const nv = (id, d) => { const v = parseFloat($(id).value); return isNaN(v) ? d : v; };
+  const from = nv("lkFrom", 20); let to = nv("lkTo", 80); if (to <= from) to = from + 1;
+  return { method: $("lkMethod").value, deg: Math.max(1, Math.min(8, Math.round(nv("lkDeg", 3)))), from, to, step: Math.max(.001, nv("lkStep", 1)),
+           ext: $("lkExt").value, dots: $("lkSteps").checked, meas: $("lkMeas").checked, shade: $("lkShade").checked };
+}
+function polyFit(X, Y, deg) {
+  const n = X.length, d = Math.min(deg, n - 1), xm = (X[0] + X[n - 1]) / 2, xs = (X[n - 1] - X[0]) / 2 || 1, T = X.map(x => (x - xm) / xs);
+  const A = Array.from({ length: d + 1 }, () => new Array(d + 2).fill(0));
+  for (let i = 0; i <= d; i++) {
+    for (let j = 0; j <= d; j++) { let q = 0; for (let k = 0; k < n; k++) q += Math.pow(T[k], i + j); A[i][j] = q; }
+    let b = 0; for (let k = 0; k < n; k++) b += Y[k] * Math.pow(T[k], i); A[i][d + 1] = b;
+  }
+  for (let c = 0; c <= d; c++) {
+    let pi = c; for (let r = c + 1; r <= d; r++) if (Math.abs(A[r][c]) > Math.abs(A[pi][c])) pi = r;
+    [A[c], A[pi]] = [A[pi], A[c]]; const pv = A[c][c] || 1e-12;
+    for (let r = c + 1; r <= d; r++) { const f = A[r][c] / pv; for (let k = c; k <= d + 1; k++) A[r][k] -= f * A[c][k]; }
+  }
+  const co = new Array(d + 1).fill(0);
+  for (let i = d; i >= 0; i--) { let q = A[i][d + 1]; for (let j = i + 1; j <= d; j++) q -= A[i][j] * co[j]; co[i] = q / (A[i][i] || 1e-12); }
+  return x => { const t = (x - xm) / xs; let v = 0; for (let i = d; i >= 0; i--) v = v * t + co[i]; return v; };
+}
+function interpBase(X, Y, L) {
+  const n = X.length, method = L.method;
+  if (n === 1) return () => Y[0];
+  if (method === "nearest") return x => { let b = 0; for (let i = 1; i < n; i++) if (Math.abs(X[i] - x) < Math.abs(X[b] - x)) b = i; return Y[b]; };
+  if (method === "poly") return polyFit(X, Y, L.deg);
+  const seg = x => { if (x <= X[0]) return 0; if (x >= X[n - 1]) return n - 2; let lo = 0, hi = n - 2; while (lo < hi) { const m = (lo + hi + 1) >> 1; if (X[m] <= x) lo = m; else hi = m - 1; } return lo; };
+  const h = [], d = [];
+  for (let i = 0; i < n - 1; i++) { h[i] = X[i + 1] - X[i]; d[i] = (Y[i + 1] - Y[i]) / h[i]; }
+  if (method === "linear") return x => { const i = seg(x); return Y[i] + d[i] * (x - X[i]); };
+  if (method === "cubic") {
+    const M = new Array(n).fill(0);
+    if (n > 2) {
+      const a = [], b = [], c = [], r = [];
+      for (let i = 1; i < n - 1; i++) { a[i] = h[i - 1]; b[i] = 2 * (h[i - 1] + h[i]); c[i] = h[i]; r[i] = 6 * (d[i] - d[i - 1]); }
+      for (let i = 2; i < n - 1; i++) { const w = a[i] / b[i - 1]; b[i] -= w * c[i - 1]; r[i] -= w * r[i - 1]; }
+      M[n - 2] = r[n - 2] / b[n - 2];
+      for (let i = n - 3; i >= 1; i--) M[i] = (r[i] - c[i] * M[i + 1]) / b[i];
+    }
+    return x => { const i = seg(x), hh = h[i], A_ = X[i + 1] - x, B_ = x - X[i];
+      return M[i] * A_ ** 3 / (6 * hh) + M[i + 1] * B_ ** 3 / (6 * hh) + (Y[i] / hh - M[i] * hh / 6) * A_ + (Y[i + 1] / hh - M[i + 1] * hh / 6) * B_; };
+  }
+  const m = new Array(n);
+  if (n === 2) { m[0] = m[1] = d[0]; }
+  else if (method === "catmull") {
+    m[0] = d[0]; m[n - 1] = d[n - 2];
+    for (let i = 1; i < n - 1; i++) m[i] = (Y[i + 1] - Y[i - 1]) / (X[i + 1] - X[i - 1]);
+  } else { // pchip
+    for (let i = 1; i < n - 1; i++) {
+      if (d[i - 1] * d[i] <= 0) m[i] = 0;
+      else { const w1 = 2 * h[i] + h[i - 1], w2 = h[i] + 2 * h[i - 1]; m[i] = (w1 + w2) / (w1 / d[i - 1] + w2 / d[i]); }
+    }
+    const edge = (h0, h1, d0, d1) => {
+      let v = ((2 * h0 + h1) * d0 - h0 * d1) / (h0 + h1);
+      if (Math.sign(v) !== Math.sign(d0)) v = 0; else if (Math.sign(d0) !== Math.sign(d1) && Math.abs(v) > 3 * Math.abs(d0)) v = 3 * d0;
+      return v;
+    };
+    m[0] = edge(h[0], h[1], d[0], d[1]); m[n - 1] = edge(h[n - 2], h[n - 3], d[n - 2], d[n - 3]);
+  }
+  return x => {
+    const i = seg(x), t = (x - X[i]) / h[i], t2 = t * t, t3 = t2 * t;
+    return (2 * t3 - 3 * t2 + 1) * Y[i] + (t3 - 2 * t2 + t) * h[i] * m[i] + (-2 * t3 + 3 * t2) * Y[i + 1] + (t3 - t2) * h[i] * m[i + 1];
+  };
+}
+function makeFn(X, Y, L) {
+  const base = interpBase(X, Y, L), x0 = X[0], xn = X[X.length - 1], hh = (xn - x0) * 1e-4 || 1e-4;
+  return x => {
+    if (x >= x0 && x <= xn) return base(x);
+    if (L.ext === "clamp") return base(x < x0 ? x0 : xn);
+    return x < x0 ? base(x0) + (base(x0 + hh) - base(x0)) / hh * (x - x0) : base(xn) + (base(xn) - base(xn - hh)) / hh * (x - xn);
+  };
+}
+function looPred(X, Y, L) {
+  if (X.length < 3) return null;
+  return X.map((x, i) => makeFn(X.filter((_, k) => k !== i), Y.filter((_, k) => k !== i), L)(x));
+}
+const fmtN = v => { if (!isFinite(v)) return "–"; const a = Math.abs(v); if (a === 0) return "0"; return v.toFixed(Math.min(6, Math.max(0, 2 - Math.floor(Math.log10(a))))); };
+const METHOD_NAMES = { linear: "Linear", cubic: "Cubic spline", pchip: "Monotone cubic", catmull: "Catmull-Rom", nearest: "Nearest point", poly: "Polynomial fit" };
+const lookDec = (j, o) => o.decT !== null ? o.decT : Math.max(autoDec(j), 2);
+
+function drawLookup(hover = -1) {
+  hoverI = hover;
+  const wrap = $("cvWrap"), cv = $("cv"), W = wrap.clientWidth, H = wrap.clientHeight, dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = BG; c.fillRect(0, 0, W, H);
+  const o = getO();
+  const P = prepData(o.x), X = P.X;
+  if (X.length < 2) {
+    c.fillStyle = "#8b93a7"; c.font = "14px system-ui"; c.textAlign = "center";
+    c.fillText("Need at least 2 different distances to build a lookup table", W / 2, H / 2); LAY = null; $("metrics").innerHTML = ""; $("tbl").innerHTML = ""; LKEY = ""; return;
+  }
+  const L = getLook(), from = L.from, to = L.to;
+  const series = [{ col: o.y1, color: o.c1, side: "L", dec: o.dec1, k: o.k1, min: o.min1, max: o.max1 }];
+  if (o.y2 >= 0 && o.y2 < names.length) series.push({ col: o.y2, color: o.c2, side: "R", dec: o.dec2, k: o.k2, min: o.min2, max: o.max2 });
+  const hasR = series.length > 1;
+  const ml = o.atitles ? 74 : 58, mr = hasR ? (o.atitles ? 78 : 62) : 22, mt = o.title ? 50 : 26, mb = o.atitles ? 62 : 44;
+  const pw = W - ml - mr, ph = H - mt - mb; if (pw < 50 || ph < 50) return;
+  const px = v => ml + (v - from) / (to - from) * pw;
+  const F = {}; series.forEach(s => F[s.col] = makeFn(X, P.cols[s.col], L));
+  const cnt = Math.min(3000, Math.floor((to - from) / L.step + 1e-9) + 1), steps = [];
+  for (let i = 0; i < cnt; i++) steps.push(+(from + i * L.step).toFixed(8));
+  // dense sample positions (include the data edges so solid/dashed split is exact)
+  const ND = Math.max(150, Math.min(700, Math.round(pw))), dense = [];
+  for (let i = 0; i <= ND; i++) dense.push(from + (to - from) * i / ND);
+  [X[0], X[X.length - 1]].forEach(v => { if (v > from && v < to) dense.push(v); });
+  dense.sort((a, b) => a - b);
+
+  series.forEach(s => {
+    const vals = dense.map(v => F[s.col](v)).concat(X.map((x, i) => (x >= from && x <= to) ? P.cols[s.col][i] : NaN)).filter(isFinite);
+    let mn = Math.min(...vals), mx = Math.max(...vals);
+    const cmn = parseFloat(s.min), cmx = parseFloat(s.max);
+    if (!isNaN(cmn)) mn = cmn; if (!isNaN(cmx)) mx = cmx; if (mx <= mn) mx = mn + 1;
+    const nt = niceTicks(mn, mx, 5), yp = o.ypad / 100 * (nt.hi - nt.lo);
+    s.lo = !isNaN(cmn) ? cmn : nt.lo - yp; s.hi = !isNaN(cmx) ? cmx : nt.hi + yp; s.step = nt.step;
+    s.ticks = nt.ticks.filter(t => t >= s.lo - 1e-9 && t <= s.hi + 1e-9);
+    s.py = v => mt + ph - (v - s.lo) / ((s.hi - s.lo) || 1) * ph;
+  });
+  const Ls = series[0], fx = v => v.toFixed(o.decX !== null ? o.decX : Math.max(autoDec(o.x), (trim(L.step).split(".")[1] || "").length));
+
+  if (o.title) { c.fillStyle = "#e6e9f2"; c.font = "600 15px system-ui"; c.textAlign = "center"; c.fillText(o.title, ml + pw / 2, 26); }
+  // no-data shading
+  const xa = X[0], xb = X[X.length - 1];
+  if (L.shade) {
+    c.fillStyle = "#ffffff0a";
+    if (xa > from) c.fillRect(ml, mt, Math.min(pw, px(xa) - ml), ph);
+    if (xb < to) c.fillRect(Math.max(ml, px(xb)), mt, ml + pw - Math.max(ml, px(xb)), ph);
+    c.font = "11px system-ui"; c.fillStyle = "#5f6880"; c.textAlign = "center"; c.textBaseline = "alphabetic";
+    if (xa > from && px(xa) - ml > 120) c.fillText("no data", ml + (px(xa) - ml) / 2, mt + 14);
+    if (xb < to && ml + pw - px(xb) > 120) c.fillText("no data", px(xb) + (ml + pw - px(xb)) / 2, mt + 14);
+  }
+  // grid + y ticks
+  c.font = "12px system-ui"; c.textBaseline = "middle";
+  Ls.ticks.forEach(t => {
+    const y = Ls.py(t);
+    if (o.grid) { c.strokeStyle = "#1d2230"; c.setLineDash([3, 4]); c.lineWidth = 1; c.beginPath(); c.moveTo(ml, y); c.lineTo(ml + pw, y); c.stroke(); c.setLineDash([]); }
+    c.fillStyle = hasR ? Ls.color : "#6b7390"; c.textAlign = "right"; c.fillText(yfmt(t, Ls, Ls.dec, Ls.k), ml - 10, y);
+  });
+  if (hasR) series[1].ticks.forEach(t => { c.fillStyle = series[1].color; c.textAlign = "left"; c.fillText(yfmt(t, series[1], series[1].dec, series[1].k), ml + pw + 10, series[1].py(t)); });
+  // x ticks
+  const nx = niceTicks(from, to, Math.max(4, Math.floor(pw / 70)));
+  c.textBaseline = "alphabetic"; c.textAlign = "center";
+  nx.ticks.filter(t => t >= from - 1e-9 && t <= to + 1e-9).forEach(t => {
+    const dd = o.decX !== null ? o.decX : Math.max(0, Math.ceil(-Math.log10(nx.step) - 1e-9));
+    if (o.grid) { c.strokeStyle = "#141824"; c.lineWidth = 1; c.beginPath(); c.moveTo(px(t), mt); c.lineTo(px(t), mt + ph); c.stroke(); }
+    c.fillStyle = "#6b7390"; c.fillText(t.toFixed(dd), px(t), mt + ph + 22);
+  });
+  if (o.atitles) {
+    c.fillStyle = "#8b93a7"; c.font = "12px system-ui"; c.fillText(names[o.x] || "X", ml + pw / 2, H - 10);
+    c.save(); c.translate(16, mt + ph / 2); c.rotate(-Math.PI / 2); c.fillStyle = hasR ? Ls.color : "#8b93a7"; c.fillText(names[Ls.col] || "Y", 0, 0); c.restore();
+    if (hasR) { c.save(); c.translate(W - 14, mt + ph / 2); c.rotate(Math.PI / 2); c.fillStyle = series[1].color; c.fillText(names[series[1].col] || "Y2", 0, 0); c.restore(); }
+  }
+  if (hover >= 0) { c.strokeStyle = "#4a5266"; c.lineWidth = 1; c.beginPath(); c.moveTo(px(steps[hover]), mt); c.lineTo(px(steps[hover]), mt + ph); c.stroke(); }
+  // curves
+  c.save(); c.beginPath(); c.rect(ml - 4, mt - 14, pw + 8, ph + 28); c.clip();
+  series.forEach(s => {
+    const f = F[s.col], pt = v => ({ x: px(v), y: s.py(f(v)) });
+    const left = dense.filter(v => v <= xa + 1e-9).map(pt), mid = dense.filter(v => v >= xa - 1e-9 && v <= xb + 1e-9).map(pt), right = dense.filter(v => v >= xb - 1e-9).map(pt);
+    c.strokeStyle = s.color; c.lineWidth = o.lw; c.lineJoin = "round";
+    c.setLineDash([]); if (mid.length > 1) curve(c, mid, false);
+    c.setLineDash([6, 5]); c.globalAlpha = .75;
+    if (left.length > 1 && xa > from) curve(c, left, false);
+    if (right.length > 1 && xb < to) curve(c, right, false);
+    c.globalAlpha = 1; c.setLineDash([]);
+    if (L.dots) steps.forEach((v, i) => { const q = pt(v); c.beginPath(); c.arc(q.x, q.y, i === hover ? 5.5 : 2.8, 0, 7); c.fillStyle = i === hover ? "#fff" : s.color; c.fill(); });
+    else if (hover >= 0) { const q = pt(steps[hover]); c.beginPath(); c.arc(q.x, q.y, 5.5, 0, 7); c.fillStyle = "#fff"; c.fill(); }
+    if (L.meas) X.forEach((x, i) => {
+      if (x < from || x > to) return;
+      const q = { x: px(x), y: s.py(P.cols[s.col][i]) };
+      c.beginPath(); c.arc(q.x, q.y, 6.5, 0, 7); c.lineWidth = 2; c.strokeStyle = "#fff"; c.stroke();
+    });
+  });
+  c.restore();
+  LAY = { look: true, ml, mt, pw, ph, from, to, step: L.step, steps, F, series, o, L, P, fx };
+  renderLook(hover);
+}
+function showTipLook(i, mx, my) {
+  const t = $("tip"); if (!LAY || !LAY.look || i < 0) { t.style.display = "none"; return; }
+  const { steps, F, series, o, L, P, fx } = LAY, x = steps[i], X = P.X;
+  const inside = x >= X[0] - 1e-9 && x <= X[X.length - 1] + 1e-9, exact = X.findIndex(v => Math.abs(v - x) < 1e-9), near = X.findIndex(v => Math.abs(v - x) <= L.step / 2 + 1e-9);
+  const zone = exact >= 0 ? "table point" : inside ? "interpolated" : L.ext === "clamp" ? "outside data (edge value held)" : "outside data (slope continued)";
+  let h = `<b>${fx(x)}</b><div class="zone">${zone}</div>`;
+  series.forEach(s => { h += `<div><i style="background:${s.color}"></i>${esc(names[s.col])}<span>${F[s.col](x).toFixed(lookDec(s.col, o))}</span></div>`; });
+  if (near >= 0 && exact < 0) series.forEach(s => { h += `<div class="dim"><i style="background:#6b7390"></i>${esc(names[s.col])} measured @ ${fx(X[near])}<span>${P.cols[s.col][near].toFixed(lookDec(s.col, o))}</span></div>`; });
+  t.innerHTML = h; t.style.display = "block";
+  const W = $("cvWrap").clientWidth, tw = t.offsetWidth, th = t.offsetHeight;
+  t.style.left = Math.min(W - tw - 6, mx + 16) + "px"; t.style.top = Math.max(6, Math.min($("cvWrap").clientHeight - th - 6, my + 12)) + "px";
+}
+function renderLook(hover) {
+  const o = getO(), L = getLook(), P = LAY.P, X = P.X, steps = LAY.steps;
+  const key = JSON.stringify([data, o.x, L, LOOKTAB, o.decT, names]);
+  if (key !== LKEY) {
+    LKEY = key;
+    const outCols = names.map((_, j) => j).filter(j => j !== o.x), F = {}, loo = {};
+    outCols.forEach(j => { F[j] = makeFn(X, P.cols[j], L); loo[j] = looPred(X, P.cols[j], L); });
+    // summary cards
+    let m = `<div class="note"><b>${METHOD_NAMES[L.method]}${L.method === "poly" ? " (degree " + Math.min(L.deg, X.length - 1) + ")" : ""}</b>, ${L.ext === "clamp" ? "edge value held" : "edge slope continued"} outside ${fmtN(X[0])} to ${fmtN(X[X.length - 1])}. “Leave-one-out” hides one measured point, rebuilds the table without it, and checks how far off the prediction is. Smaller is better. The two end points are not counted, because predicting them is extrapolation.</div>`;
+    outCols.forEach(j => {
+      const Y = P.cols[j], span = (Math.max(...Y) - Math.min(...Y)) || 1, pred = loo[j];
+      m += `<div class="mc"><b>${esc(names[j])}</b><br>`;
+      if (pred && X.length >= 3) {
+        const errs = []; for (let i = 1; i < X.length - 1; i++) errs.push({ i, e: pred[i] - Y[i] });
+        const rm = Math.sqrt(errs.reduce((a, b) => a + b.e * b.e, 0) / errs.length), mae = errs.reduce((a, b) => a + Math.abs(b.e), 0) / errs.length;
+        const w = errs.reduce((a, b) => Math.abs(b.e) > Math.abs(a.e) ? b : a);
+        m += `Leave-one-out RMSE <span class="n">${fmtN(rm)}</span> <span class="d">(${(rm / span * 100).toFixed(1)}% of the measured range)</span><br>Average error <span class="n">${fmtN(mae)}</span> · worst <span class="n">${fmtN(Math.abs(w.e))}</span> <span class="d">at ${fmtN(X[w.i])}</span>`;
+      } else m += `<span class="d">Need at least 3 distances for leave-one-out.</span>`;
+      if (L.method === "poly") {
+        const f = F[j], er = X.map((x, i) => f(x) - Y[i]), rmse = Math.sqrt(er.reduce((a, b) => a + b * b, 0) / er.length), mean = Y.reduce((a, b) => a + b, 0) / Y.length;
+        const sst = Y.reduce((a, b) => a + (b - mean) ** 2, 0) || 1, r2 = 1 - er.reduce((a, b) => a + b * b, 0) / sst;
+        m += `<br>Fit error at your points: RMSE <span class="n">${fmtN(rmse)}</span> · max <span class="n">${fmtN(Math.max(...er.map(Math.abs)))}</span> · R² <span class="n">${r2.toFixed(3)}</span>`;
+      } else if (L.method !== "nearest") m += `<br><span class="d">Passes exactly through every measured point.</span>`;
+      m += `</div>`;
+    });
+    $("metrics").innerHTML = m;
+    $("lkSub").textContent = `${steps.length} steps from ${fmtN(L.from)} to ${fmtN(L.to)}`;
+    // table
+    let t = "";
+    if (LOOKTAB === "acc") {
+      t = `<thead><tr><th>${esc(names[o.x])}</th>` + outCols.map(j => `<th>${esc(names[j])} measured</th><th>predicted</th><th>error</th>`).join("") + `</tr></thead><tbody>`;
+      X.forEach((x, i) => {
+        const edge = i === 0 || i === X.length - 1;
+        t += `<tr class="${edge ? "edge" : ""}"><td>${x.toFixed(autoDec(o.x))}${edge ? " (edge)" : ""}</td>` + outCols.map(j => {
+          const d = lookDec(j, o), me = P.cols[j][i], pr = loo[j] ? loo[j][i] : NaN, e = pr - me;
+          return `<td>${me.toFixed(d)}</td><td>${isFinite(pr) ? pr.toFixed(d) : "–"}</td><td class="${e > 0 ? "pos" : "neg"}">${isFinite(e) ? (e > 0 ? "+" : "") + e.toFixed(d) : "–"}</td>`;
+        }).join("") + `</tr>`;
+      });
+    } else {
+      t = `<thead><tr><th>${esc(names[o.x])}</th>` + outCols.map(j => `<th>${esc(names[j])}</th>`).join("") + `<th>zone</th></tr></thead><tbody>`;
+      steps.forEach(x => {
+        const ex = X.findIndex(v => Math.abs(v - x) < 1e-9), inside = x >= X[0] - 1e-9 && x <= X[X.length - 1] + 1e-9;
+        t += `<tr><td>${LAY.fx(x)}</td>` + outCols.map(j => `<td>${F[j](x).toFixed(lookDec(j, o))}</td>`).join("") + `<td>${ex >= 0 ? "table point" : inside ? "interpolated" : "outside data"}</td></tr>`;
+      });
+    }
+    $("tbl").innerHTML = t + "</tbody>";
+  }
+  const rows = $("tbl").tBodies[0] ? [...$("tbl").tBodies[0].rows] : [];
+  rows.forEach(r => r.classList.remove("hov"));
+  if (hover >= 0) {
+    let idx = -1;
+    if (LOOKTAB === "steps") idx = hover; else idx = X.findIndex(v => Math.abs(v - steps[hover]) <= L.step / 2 + 1e-9);
+    if (rows[idx]) { rows[idx].classList.add("hov"); const box = $("tbl").parentElement; if (rows[idx].offsetTop < box.scrollTop + 30 || rows[idx].offsetTop > box.scrollTop + box.clientHeight - 10) box.scrollTop = rows[idx].offsetTop - box.clientHeight / 2; }
+  }
+}
+function setMode(m) {
+  MODE = m; document.body.classList.toggle("look", m === "look");
+  document.querySelectorAll("#modeSeg button").forEach(b => b.classList.toggle("on", b.dataset.m === m));
+  $("lookCtl").style.display = m === "look" ? "" : "none"; $("lookCard").style.display = m === "look" ? "block" : "none";
+  $("copy").style.display = m === "look" ? "none" : ""; $("copyLook").style.display = m === "look" ? "" : "none";
+  if (m === "look" && !lookInit) {
+    lookInit = true;
+    if ($("selY2").value === "" && names.length > 2) { const j = names.findIndex((_, k) => k !== (+$("selX").value) && k !== (+$("selY1").value)); if (j >= 0) $("selY2").value = String(j); }
+  }
+  LKEY = ""; draw(); save();
+}
+document.querySelectorAll("#modeSeg button").forEach(b => b.addEventListener("click", () => setMode(b.dataset.m)));
+[["tabAcc", "acc"], ["tabSteps", "steps"]].forEach(([id, k]) => $(id).addEventListener("click", () => {
+  LOOKTAB = k; $("tabAcc").classList.toggle("on", k === "acc"); $("tabSteps").classList.toggle("on", k === "steps"); LKEY = ""; draw(-1); save();
+}));
+$("copyLook").addEventListener("click", () => {
+  if (!LAY || !LAY.look) return;
+  const o = getO(), outCols = names.map((_, j) => j).filter(j => j !== o.x), { steps, P, L } = LAY;
+  const F = {}; outCols.forEach(j => F[j] = makeFn(P.X, P.cols[j], L));
+  const txt = "// " + [o.x, ...outCols].map(j => names[j]).join(", ") + "\n" + steps.map(x => `add(${[trim(x, 6), ...outCols.map(j => F[j](x).toFixed(lookDec(j, o)))].join(", ")});`).join("\n") + "\n";
+  const done = () => { $("copyLook").textContent = "Copied ✓"; setTimeout(() => $("copyLook").textContent = "Copy lookup (every step)", 1400); };
+  const fb = () => { const t = document.createElement("textarea"); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (e) {} t.remove(); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, fb); else fb();
+});
+
 /* ---------------- state ---------------- */
 function save() {
   try {
-    const s = { text: $("txt").value, ctrl: {}, sel: {}, names, sig };
+    const s = { text: $("txt").value, ctrl: {}, sel: {}, names, sig, mode: MODE, tab: LOOKTAB };
     document.querySelectorAll("[data-s]").forEach(el => s.ctrl[el.id] = el.type === "checkbox" ? el.checked : el.value);
     ["selX", "selY1", "selY2"].forEach(id => s.sel[id] = $(id).value);
     localStorage.setItem(KEY, JSON.stringify(s));
@@ -398,6 +735,8 @@ function load() {
     if (s.names && s.names.length === names.length) { names = s.names; $("names").querySelectorAll("input").forEach((el, i) => el.value = names[i]); fillSelects(); }
     Object.entries(s.sel || {}).forEach(([id, v]) => { if ([...$(id).options].some(o => o.value === v)) $(id).value = v; });
   }
+  if (s && s.tab) { LOOKTAB = s.tab; $("tabAcc").classList.toggle("on", LOOKTAB === "acc"); $("tabSteps").classList.toggle("on", LOOKTAB === "steps"); }
+  if (s && s.mode === "look") { lookInit = true; setMode("look"); }
 }
 document.querySelectorAll("[data-s]").forEach(el => el.addEventListener("input", () => { draw(); save(); }));
 ["selX", "selY1", "selY2"].forEach(id => $(id).addEventListener("change", () => { draw(); save(); }));
