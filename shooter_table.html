@@ -1,0 +1,412 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Shooter table → chart</title>
+<style>
+  :root { --bg:#0b0d12; --panel:#12151c; --panel2:#171b24; --line:#232938; --text:#e6e9f2; --mute:#8b93a7; --accent:#3d8bff; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body { background: var(--bg); color: var(--text); font: 14px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; display: flex; flex-direction: column; }
+  header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); flex: none; }
+  header h1 { margin: 0; font-size: 17px; }
+  header .sub { color: var(--mute); font-size: 12.5px; }
+  .sp { flex: 1; }
+  button, .btn { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 7px 13px; font-size: 13px; cursor: pointer; text-decoration: none; display: inline-block; }
+  button:hover, .btn:hover { border-color: #3a4256; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 600; }
+  main { flex: 1; min-height: 0; display: grid; grid-template-columns: 360px minmax(0, 1fr); gap: 12px; padding: 12px; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; overflow: auto; } }
+  aside { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; overflow: auto; min-height: 0; }
+  aside h3 { margin: 14px 0 6px; font-size: 11.5px; text-transform: uppercase; letter-spacing: .6px; color: var(--mute); }
+  aside h3:first-child { margin-top: 0; }
+  textarea { width: 100%; height: 190px; resize: vertical; background: #0b0d12; color: var(--text); border: 1px solid var(--line); border-radius: 9px; padding: 8px 10px;
+             font: 12px/1.5 ui-monospace, Consolas, monospace; white-space: pre; }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 10px; }
+  .row.three { grid-template-columns: 1fr 1fr 1fr; }
+  label { display: flex; flex-direction: column; gap: 3px; font-size: 11.5px; color: var(--mute); }
+  label.chk { flex-direction: row; align-items: center; gap: 7px; color: var(--text); font-size: 13px; }
+  input[type=number], input[type=text], select { width: 100%; background: #0b0d12; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font-size: 13px; }
+  input[type=color] { width: 100%; height: 31px; padding: 2px; background: #0b0d12; border: 1px solid var(--line); border-radius: 8px; }
+  input[type=checkbox] { accent-color: var(--accent); }
+  .stack { display: flex; flex-direction: column; gap: 8px; }
+  .hint { font-size: 11.5px; color: #6b7390; }
+  section.right { display: flex; flex-direction: column; gap: 12px; min-height: 0; min-width: 0; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  #cvWrap { position: relative; flex: 1; min-height: 340px; overflow: hidden; border-radius: 12px; background: #000; border: 1px solid var(--line); }
+  #cv { position: absolute; inset: 0; display: block; }
+  #tip { position: absolute; display: none; pointer-events: none; background: #2b2e33f2; border: 1px solid #ffffff18; border-radius: 9px; padding: 8px 11px; font-size: 12.5px; min-width: 130px; box-shadow: 0 6px 22px #0009; z-index: 4; }
+  #tip b { display: block; margin-bottom: 4px; font-size: 13px; }
+  #tip div { display: flex; align-items: center; gap: 7px; white-space: nowrap; }
+  #tip div span { margin-left: auto; padding-left: 14px; font-weight: 600; }
+  #tip div.dim { color: #9aa1b5; }
+  #tip i { width: 9px; height: 9px; border-radius: 50%; display: inline-block; flex: none; }
+  .tblwrap { max-height: 200px; overflow: auto; flex: none; }
+  table { border-collapse: collapse; width: 100%; font-family: ui-monospace, Consolas, monospace; font-size: 12px; }
+  th, td { padding: 5px 12px; text-align: right; border-bottom: 1px solid var(--line); }
+  th { position: sticky; top: 0; background: var(--panel2); color: var(--mute); font-weight: 600; }
+  tr.hov td { background: #1b2a47; color: #fff; }
+  .msg { color: #e8d9a8; font-size: 12px; margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Shooter table → chart</h1>
+    <div class="sub">Paste your <code>add(distance, rpm, hood)</code> lines and plot any column against any other.</div>
+  </div>
+  <div class="sp"></div>
+  <a class="btn" href="javascript:history.back()">← Back to converter</a>
+</header>
+
+<main>
+<aside>
+  <h3>Table</h3>
+  <textarea id="txt" spellcheck="false">// distance (in), rpm, hood servo position
+        add(21.7, 2150, 0.316);
+        add(26.7, 2202, 0.29);
+        add(28.3, 2150, 0.3);
+        add(32.1, 2161, 0.295);
+        add(35.7, 2190, 0.29);
+        // add(37.6, 2220, 0.28);   old one
+        add(37.8, 2357, 0.292);
+        add(40.6, 2248, 0.276);
+        add(42.0, 2200, 0.294);
+        add(44.7, 2310, 0.27);
+        add(44.9, 2300, 0.272);
+        add(47.0, 2300, 0.28);
+        add(48.5, 2280, 0.272);
+        add(49.4, 2293, 0.271);</textarea>
+  <div class="hint">Commented lines are ignored. A first comment line like <code>// distance (in), rpm, hood</code> names the columns. Plain CSV rows work too.</div>
+  <div class="msg" id="msg"></div>
+
+  <h3>Column names</h3>
+  <div class="stack" id="names"></div>
+
+  <h3>X axis</h3>
+  <div class="row">
+    <label>Variable<select id="selX"></select></label>
+    <label>Decimals (blank = auto)<input type="number" id="decX" data-s min="0" max="8" placeholder="auto"></label>
+    <label>Spacing<select id="spacing" data-s><option value="even">Evenly spaced</option><option value="scale">True scale</option></select></label>
+    <label class="chk" style="padding-top:16px"><input type="checkbox" id="sort" data-s checked> Sort by X</label>
+  </div>
+
+  <h3>Y axis (left)</h3>
+  <div class="row">
+    <label>Variable<select id="selY1"></select></label>
+    <label>Decimals<input type="number" id="dec1" data-s min="0" max="8" placeholder="auto"></label>
+    <label>Min<input type="number" id="min1" data-s step="any" placeholder="auto"></label>
+    <label>Max<input type="number" id="max1" data-s step="any" placeholder="auto"></label>
+    <label>Color<input type="color" id="c1" data-s value="#3d8bff"></label>
+    <label class="chk" style="padding-top:16px"><input type="checkbox" id="k1" data-s> 2.2K style</label>
+  </div>
+
+  <h3>Second Y axis (right, optional)</h3>
+  <div class="row">
+    <label>Variable<select id="selY2"></select></label>
+    <label>Decimals<input type="number" id="dec2" data-s min="0" max="8" placeholder="auto"></label>
+    <label>Min<input type="number" id="min2" data-s step="any" placeholder="auto"></label>
+    <label>Max<input type="number" id="max2" data-s step="any" placeholder="auto"></label>
+    <label>Color<input type="color" id="c2" data-s value="#f5a524"></label>
+    <label class="chk" style="padding-top:16px"><input type="checkbox" id="k2" data-s> 2.2K style</label>
+  </div>
+
+  <h3>Display</h3>
+  <div class="stack">
+    <label>Title<input type="text" id="title" data-s placeholder="optional"></label>
+    <div class="row">
+      <label>Tooltip decimals<input type="number" id="decT" data-s min="0" max="8" placeholder="auto"></label>
+      <label>Line width<input type="number" id="lw" data-s min="1" max="8" value="2"></label>
+    </div>
+    <label class="chk"><input type="checkbox" id="smooth" data-s> Smooth line</label>
+    <label class="chk"><input type="checkbox" id="pts" data-s checked> Show points</label>
+    <label class="chk"><input type="checkbox" id="grid" data-s checked> Grid lines</label>
+    <label class="chk"><input type="checkbox" id="atitles" data-s checked> Axis titles</label>
+    <label class="chk"><input type="checkbox" id="allcols" data-s checked> Tooltip shows every column</label>
+  </div>
+
+  <h3>Export</h3>
+  <div class="row">
+    <button id="png" class="primary">Download PNG</button>
+    <button id="copy">Copy sorted code</button>
+  </div>
+  <div style="margin-top:10px"><button id="reset">Reset everything</button></div>
+</aside>
+
+<section class="right">
+  <div id="cvWrap"><canvas id="cv"></canvas><div id="tip"></div></div>
+  <div class="card tblwrap"><table id="tbl"></table></div>
+</section>
+</main>
+
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const BG = "#000000", KEY = "shooterTable_v1";
+let data = [], names = [], sig = "", LAY = null, hoverI = -1;
+
+/* ---------------- parsing ---------------- */
+function parse(text) {
+  const clean = text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/[^\n]*/g, "");
+  let rows = [], m; const re = /add\s*\(([^)]*)\)/g;
+  while ((m = re.exec(clean))) {
+    const v = m[1].split(",").map(x => parseFloat(x.trim()));
+    if (v.length >= 2 && v.every(x => !isNaN(x))) rows.push(v);
+  }
+  if (!rows.length) clean.split(/\n/).forEach(l => {
+    const p = l.trim().split(/[\s,;\t]+/).filter(Boolean);
+    if (p.length >= 2) { const v = p.map(parseFloat); if (v.every(x => !isNaN(x))) rows.push(v); }
+  });
+  const nc = rows.length ? Math.max(...rows.map(r => r.length)) : 0;
+  const bad = rows.filter(r => r.length !== nc).length;
+  rows = rows.filter(r => r.length === nc);
+  let header = null;
+  for (const l of text.split(/\r?\n/)) {
+    if (!/^\s*\/\//.test(l) && /add\s*\(/.test(l)) break;
+    const mm = l.match(/^\s*\/\/\s*(.+)$/);
+    if (mm && !/add\s*\(/.test(mm[1])) {
+      const p = mm[1].split(",").map(x => x.trim());
+      if (p.length === nc && p.every(x => x && isNaN(parseFloat(x)))) { header = p; break; }
+    }
+  }
+  return { rows, nc, header, bad };
+}
+function defaultNames(nc) {
+  const d = ["Distance (in)", "RPM", "Hood servo"];
+  return Array.from({ length: nc }, (_, i) => d[i] || "Column " + (i + 1));
+}
+function fillSelects() {
+  ["selX", "selY1", "selY2"].forEach(id => {
+    const el = $(id), cur = el.value;
+    el.innerHTML = (id === "selY2" ? '<option value="">— none —</option>' : "") + names.map((n, i) => `<option value="${i}">${esc(n)}</option>`).join("");
+    if ([...el.options].some(o => o.value === cur)) el.value = cur;
+  });
+}
+function reparse(resetSel) {
+  const p = parse($("txt").value);
+  data = p.rows;
+  const newSig = p.nc + "|" + (p.header || []).join(",");
+  if (newSig !== sig || resetSel) {
+    sig = newSig;
+    names = p.header ? p.header.slice() : defaultNames(p.nc);
+    $("names").innerHTML = names.map((n, i) => `<input type="text" data-n="${i}" value="${esc(n)}">`).join("");
+    fillSelects();
+    $("selX").value = "0"; $("selY1").value = p.nc > 1 ? "1" : "0"; $("selY2").value = "";
+  }
+  $("msg").textContent = !data.length ? "No rows found. Use lines like add(21.7, 2150, 0.316);"
+    : `${data.length} rows, ${p.nc} columns` + (p.bad ? ` (${p.bad} row(s) skipped: different number of values)` : "");
+}
+
+/* ---------------- formatting ---------------- */
+const trim = (v, d = 4) => String(+v.toFixed(d));
+// auto decimals = the most decimals any value in that column needs (so 42.0 shows as 42.0 next to 44.7)
+function autoDec(col) {
+  let m = 0;
+  data.forEach(r => { const t = trim(r[col]), i = t.indexOf("."); if (i >= 0) m = Math.max(m, t.length - i - 1); });
+  return m;
+}
+const decOf = id => { const s = $(id).value.trim(); return s === "" ? null : Math.max(0, Math.min(8, parseInt(s))); };
+function niceTicks(min, max, n) {
+  if (min === max) { const d = Math.abs(min) * .05 || 1; min -= d; max += d; }
+  const raw = (max - min) / n, mag = Math.pow(10, Math.floor(Math.log10(raw))), nr = raw / mag;
+  const step = (nr < 1.5 ? 1 : nr < 3 ? 2 : nr < 7 ? 5 : 10) * mag;
+  const lo = Math.floor(min / step + 1e-9) * step, hi = Math.ceil(max / step - 1e-9) * step, ticks = [];
+  for (let v = lo; v <= hi + step * 1e-6; v += step) ticks.push(+v.toFixed(10));
+  return { lo, hi, step, ticks };
+}
+function yfmt(v, sc, dec, k) {
+  if (k && Math.abs(sc.hi) >= 1000) {
+    const d = dec !== null ? dec : Math.max(0, Math.ceil(-Math.log10(sc.step / 1000) - 1e-9));
+    return (v / 1000).toFixed(d) + "K";
+  }
+  const d = dec !== null ? dec : Math.max(0, Math.ceil(-Math.log10(sc.step) - 1e-9));
+  return v.toFixed(d);
+}
+
+/* ---------------- chart ---------------- */
+function getO() {
+  const y2 = $("selY2").value;
+  return {
+    x: +$("selX").value || 0, y1: +$("selY1").value || 0, y2: y2 === "" ? -1 : +y2,
+    decX: decOf("decX"), dec1: decOf("dec1"), dec2: decOf("dec2"), decT: decOf("decT"),
+    min1: $("min1").value, max1: $("max1").value, min2: $("min2").value, max2: $("max2").value,
+    c1: $("c1").value, c2: $("c2").value, k1: $("k1").checked, k2: $("k2").checked,
+    spacing: $("spacing").value, sort: $("sort").checked, smooth: $("smooth").checked, pts: $("pts").checked,
+    grid: $("grid").checked, atitles: $("atitles").checked, allcols: $("allcols").checked,
+    title: $("title").value.trim(), lw: Math.max(1, +$("lw").value || 2)
+  };
+}
+function sortedRows(o) { const r = data.slice(); if (o.sort) r.sort((a, b) => a[o.x] - b[o.x]); return r; }
+function curve(c, p, smooth) {
+  c.beginPath(); c.moveTo(p[0].x, p[0].y);
+  if (!smooth || p.length < 3) { for (let i = 1; i < p.length; i++) c.lineTo(p[i].x, p[i].y); }
+  else for (let i = 0; i < p.length - 1; i++) {
+    const p0 = p[i - 1] || p[i], p1 = p[i], p2 = p[i + 1], p3 = p[i + 2] || p2;
+    c.bezierCurveTo(p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6, p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6, p2.x, p2.y);
+  }
+  c.stroke();
+}
+function draw(hover = -1) {
+  hoverI = hover;
+  const wrap = $("cvWrap"), cv = $("cv"), W = wrap.clientWidth, H = wrap.clientHeight, dpr = window.devicePixelRatio || 1;
+  cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+  const c = cv.getContext("2d"); c.setTransform(dpr, 0, 0, dpr, 0, 0);
+  c.fillStyle = BG; c.fillRect(0, 0, W, H);
+  if (!data.length) {
+    c.fillStyle = "#8b93a7"; c.font = "14px system-ui"; c.textAlign = "center";
+    c.fillText("Paste add(distance, rpm, hood) lines on the left", W / 2, H / 2); LAY = null; renderTable(-1); return;
+  }
+  const o = getO(), rows = sortedRows(o), n = rows.length;
+  const series = [{ col: o.y1, color: o.c1, side: "L", dec: o.dec1, k: o.k1, min: o.min1, max: o.max1 }];
+  if (o.y2 >= 0 && o.y2 < names.length) series.push({ col: o.y2, color: o.c2, side: "R", dec: o.dec2, k: o.k2, min: o.min2, max: o.max2 });
+  const hasR = series.length > 1;
+  const ml = o.atitles ? 74 : 58, mr = hasR ? (o.atitles ? 78 : 62) : 22, mt = o.title ? 46 : 20, mb = o.atitles ? 58 : 38;
+  const pw = W - ml - mr, ph = H - mt - mb;
+  if (pw < 50 || ph < 50) return;
+
+  series.forEach(s => {
+    const vals = rows.map(r => r[s.col]); let mn = Math.min(...vals), mx = Math.max(...vals);
+    const cmn = parseFloat(s.min), cmx = parseFloat(s.max);
+    if (!isNaN(cmn)) mn = cmn; if (!isNaN(cmx)) mx = cmx;
+    if (mx <= mn) mx = mn + 1;
+    const nt = niceTicks(mn, mx, 5);
+    s.lo = !isNaN(cmn) ? cmn : nt.lo; s.hi = !isNaN(cmx) ? cmx : nt.hi; s.step = nt.step;
+    s.ticks = nt.ticks.filter(t => t >= s.lo - 1e-9 && t <= s.hi + 1e-9);
+    s.py = v => mt + ph - (v - s.lo) / ((s.hi - s.lo) || 1) * ph;
+  });
+  const L = series[0];
+
+  // X positions
+  const pad = Math.min(30, pw * .04), xs = rows.map(r => r[o.x]), xmn = Math.min(...xs), xmx = Math.max(...xs);
+  let px, xticks = [];
+  const fx = v => v.toFixed(o.decX !== null ? o.decX : autoDec(o.x));
+  if (o.spacing === "even") {
+    px = i => ml + pad + (n === 1 ? (pw - 2 * pad) / 2 : i * (pw - 2 * pad) / (n - 1));
+    const gap = n > 1 ? (pw - 2 * pad) / (n - 1) : pw, k = Math.max(1, Math.ceil(46 / gap));
+    rows.forEach((r, i) => { if (i % k === 0) xticks.push({ x: px(i), t: fx(r[o.x]) }); });
+  } else {
+    const span = (xmx - xmn) || 1;
+    px = i => ml + pad + (xs[i] - xmn) / span * (pw - 2 * pad);
+    const nt = niceTicks(xmn, xmx, 7);
+    nt.ticks.filter(t => t >= xmn - 1e-9 && t <= xmx + 1e-9).forEach(t => {
+      const dd = o.decX !== null ? o.decX : Math.max(0, Math.ceil(-Math.log10(nt.step) - 1e-9));
+      xticks.push({ x: ml + pad + (t - xmn) / span * (pw - 2 * pad), t: t.toFixed(dd) });
+    });
+  }
+
+  // title
+  if (o.title) { c.fillStyle = "#e6e9f2"; c.font = "600 15px system-ui"; c.textAlign = "center"; c.fillText(o.title, ml + pw / 2, 26); }
+  // grid + y ticks
+  c.font = "12px system-ui"; c.textBaseline = "middle";
+  L.ticks.forEach(t => {
+    const y = L.py(t);
+    if (o.grid) { c.strokeStyle = "#1d2230"; c.setLineDash([3, 4]); c.lineWidth = 1; c.beginPath(); c.moveTo(ml, y); c.lineTo(ml + pw, y); c.stroke(); c.setLineDash([]); }
+    c.fillStyle = hasR ? L.color : "#6b7390"; c.textAlign = "right"; c.fillText(yfmt(t, L, L.dec, L.k), ml - 10, y);
+  });
+  if (hasR) series[1].ticks.forEach(t => { c.fillStyle = series[1].color; c.textAlign = "left"; c.fillText(yfmt(t, series[1], series[1].dec, series[1].k), ml + pw + 10, series[1].py(t)); });
+  // x ticks
+  c.textBaseline = "alphabetic"; c.textAlign = "center"; c.fillStyle = "#6b7390";
+  xticks.forEach(t => c.fillText(t.t, t.x, mt + ph + 22));
+  // axis titles
+  if (o.atitles) {
+    c.fillStyle = "#8b93a7"; c.font = "12px system-ui";
+    c.fillText(names[o.x] || "X", ml + pw / 2, H - 10);
+    c.save(); c.translate(16, mt + ph / 2); c.rotate(-Math.PI / 2); c.fillStyle = hasR ? L.color : "#8b93a7"; c.fillText(names[L.col] || "Y", 0, 0); c.restore();
+    if (hasR) { c.save(); c.translate(W - 14, mt + ph / 2); c.rotate(Math.PI / 2); c.fillStyle = series[1].color; c.fillText(names[series[1].col] || "Y2", 0, 0); c.restore(); }
+  }
+  // crosshair
+  if (hover >= 0) { c.strokeStyle = "#4a5266"; c.lineWidth = 1; c.beginPath(); c.moveTo(px(hover), mt); c.lineTo(px(hover), mt + ph); c.stroke(); }
+  // series
+  c.save(); c.beginPath(); c.rect(ml - 8, mt - 8, pw + 16, ph + 16); c.clip();
+  series.forEach(s => {
+    const p = rows.map((r, i) => ({ x: px(i), y: s.py(r[s.col]) }));
+    c.strokeStyle = s.color; c.lineWidth = o.lw; c.lineJoin = "round"; curve(c, p, o.smooth);
+    if (o.pts) p.forEach((q, i) => {
+      c.beginPath(); c.arc(q.x, q.y, i === hover ? 6.5 : 4.5, 0, 7); c.fillStyle = s.color; c.fill();
+      c.lineWidth = i === hover ? 2.5 : 2; c.strokeStyle = i === hover ? "#fff" : "#ffffff40"; c.stroke();
+    });
+    else if (hover >= 0) { c.beginPath(); c.arc(p[hover].x, p[hover].y, 6, 0, 7); c.fillStyle = s.color; c.fill(); c.strokeStyle = "#fff"; c.lineWidth = 2; c.stroke(); }
+  });
+  c.restore();
+  LAY = { ml, mt, pw, ph, n, rows, series, o, xs: rows.map((r, i) => px(i)), fx };
+  renderTable(hover);
+}
+
+/* ---------------- tooltip ---------------- */
+function showTip(i, mx, my) {
+  const t = $("tip"); if (!LAY || i < 0) { t.style.display = "none"; return; }
+  const { rows, series, o, fx } = LAY, r = rows[i], ft = (v, j) => v.toFixed(o.decT !== null ? o.decT : autoDec(j));
+  const plotted = new Set([o.x, ...series.map(s => s.col)]);
+  let h = `<b>${fx(r[o.x])}</b>`;
+  series.forEach(s => { h += `<div><i style="background:${s.color}"></i>${esc(names[s.col])}<span>${ft(r[s.col], s.col)}</span></div>`; });
+  if (o.allcols) r.forEach((v, j) => { if (!plotted.has(j)) h += `<div class="dim"><i style="background:#6b7390"></i>${esc(names[j])}<span>${ft(v, j)}</span></div>`; });
+  t.innerHTML = h; t.style.display = "block";
+  const W = $("cvWrap").clientWidth, tw = t.offsetWidth, th = t.offsetHeight;
+  t.style.left = Math.min(W - tw - 6, mx + 16) + "px"; t.style.top = Math.max(6, Math.min($("cvWrap").clientHeight - th - 6, my + 12)) + "px";
+}
+$("cvWrap").addEventListener("mousemove", e => {
+  if (!LAY) return;
+  const r = $("cvWrap").getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+  if (mx < LAY.ml - 12 || mx > LAY.ml + LAY.pw + 12) { if (hoverI >= 0) draw(-1); showTip(-1); return; }
+  let best = 0, bd = 1e9; LAY.xs.forEach((x, i) => { const d = Math.abs(x - mx); if (d < bd) { bd = d; best = i; } });
+  if (best !== hoverI) draw(best);
+  showTip(best, mx, my);
+});
+$("cvWrap").addEventListener("mouseleave", () => { draw(-1); showTip(-1); });
+
+/* ---------------- table / export ---------------- */
+function renderTable(hover) {
+  const o = getO(), rows = sortedRows(o);
+  const dd = (v, j) => v.toFixed(o.decT !== null ? o.decT : autoDec(j));
+  $("tbl").innerHTML = `<thead><tr>${names.map(n => `<th>${esc(n)}</th>`).join("")}</tr></thead><tbody>` +
+    rows.map((r, i) => `<tr class="${i === hover ? "hov" : ""}">${r.map((v, j) => `<td>${dd(v, j)}</td>`).join("")}</tr>`).join("") + "</tbody>";
+}
+$("png").addEventListener("click", () => {
+  draw(-1); showTip(-1);
+  $("cv").toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = "shooter_chart.png"; a.click(); });
+});
+$("copy").addEventListener("click", () => {
+  const rows = data.slice().sort((a, b) => a[0] - b[0]);
+  const txt = "// " + names.join(", ") + "\n" + rows.map(r => `add(${r.map(v => trim(v, 6)).join(", ")});`).join("\n") + "\n";
+  const done = () => { $("copy").textContent = "Copied ✓"; setTimeout(() => $("copy").textContent = "Copy sorted code", 1400); };
+  if (navigator.clipboard && window.isSecureContext) navigator.clipboard.writeText(txt).then(done, () => fallback());
+  else fallback();
+  function fallback() { const t = document.createElement("textarea"); t.value = txt; document.body.appendChild(t); t.select(); try { document.execCommand("copy"); done(); } catch (e) {} t.remove(); }
+});
+
+/* ---------------- state ---------------- */
+function save() {
+  try {
+    const s = { text: $("txt").value, ctrl: {}, sel: {}, names, sig };
+    document.querySelectorAll("[data-s]").forEach(el => s.ctrl[el.id] = el.type === "checkbox" ? el.checked : el.value);
+    ["selX", "selY1", "selY2"].forEach(id => s.sel[id] = $(id).value);
+    localStorage.setItem(KEY, JSON.stringify(s));
+  } catch (e) {}
+}
+function load() {
+  let s = null; try { s = JSON.parse(localStorage.getItem(KEY) || "null"); } catch (e) {}
+  if (s) {
+    $("txt").value = s.text;
+    Object.entries(s.ctrl || {}).forEach(([id, v]) => { const el = $(id); if (!el) return; if (el.type === "checkbox") el.checked = v; else el.value = v; });
+  }
+  reparse(true);
+  if (s && s.sig === sig) {
+    if (s.names && s.names.length === names.length) { names = s.names; $("names").querySelectorAll("input").forEach((el, i) => el.value = names[i]); fillSelects(); }
+    Object.entries(s.sel || {}).forEach(([id, v]) => { if ([...$(id).options].some(o => o.value === v)) $(id).value = v; });
+  }
+}
+document.querySelectorAll("[data-s]").forEach(el => el.addEventListener("input", () => { draw(); save(); }));
+["selX", "selY1", "selY2"].forEach(id => $(id).addEventListener("change", () => { draw(); save(); }));
+$("txt").addEventListener("input", () => { reparse(false); draw(); save(); });
+$("names").addEventListener("input", e => {
+  const i = e.target.dataset.n; if (i === undefined) return;
+  names[+i] = e.target.value || "Column " + (+i + 1); fillSelects(); draw(); save();
+});
+$("reset").addEventListener("click", () => { try { localStorage.removeItem(KEY); } catch (e) {} location.reload(); });
+new ResizeObserver(() => draw()).observe($("cvWrap"));
+window.addEventListener("resize", () => draw());
+load(); draw();
+</script>
+</body>
+</html>
